@@ -7,11 +7,13 @@ public  class Token {
     public final int type;
     public final String value;
     public final int LineNumber;
+    public final int columnNumber;
 
-    public Token(int type, String value, int lineNumber) {
+    public Token(int type, String value, int lineNumber, int columnNumber) {
         this.type = type;
         this.value = value;
         this.LineNumber = lineNumber;
+        this.columnNumber = columnNumber;
 
     }
 
@@ -25,6 +27,10 @@ public  class Token {
 
     public int getLineNumber() {
         return LineNumber;
+    }
+
+    public int getColumnNumber() {
+        return columnNumber;
     }
 
     @Override

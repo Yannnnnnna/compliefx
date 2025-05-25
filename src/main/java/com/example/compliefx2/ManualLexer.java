@@ -230,9 +230,9 @@ public class ManualLexer {
 
         // 判断是否为关键字
         if (isKeyword(value)) {
-            return new Token(getTokenCode(value), value,currentLineNum);
+            return new Token(getTokenCode(value), value,currentLineNum, currentLineIndex);
         } else {
-            return new Token(getTokenCode("Identifier"), value, currentLineNum);
+            return new Token(getTokenCode("Identifier"), value, currentLineNum, currentLineIndex);
         }
     }
 
@@ -268,7 +268,7 @@ public class ManualLexer {
             return scanFloat(sb);
         }
         // 单独的0
-        return new Token(getTokenCode("Integer"), sb.toString(),currentLineNum);
+        return new Token(getTokenCode("Integer"), sb.toString(),currentLineNum, currentLineIndex);
     }
 
     /**
@@ -292,7 +292,7 @@ public class ManualLexer {
             return handleInvalidSuffix(sb, "无法识别的16进制数: ");
         }
 
-        return new Token(getTokenCode("Integer"), sb.toString(),currentLineNum);
+        return new Token(getTokenCode("Integer"), sb.toString(),currentLineNum, currentLineIndex);
     }
 
     /**
@@ -329,7 +329,7 @@ public class ManualLexer {
             return handleInvalidSuffix(sb, "无法识别的8进制数: ");
         }
 
-        return new Token(getTokenCode("Integer"), sb.toString(),currentLineNum);
+        return new Token(getTokenCode("Integer"), sb.toString(),currentLineNum,  currentLineIndex);
     }
 
     /**
@@ -356,7 +356,7 @@ public class ManualLexer {
             return handleInvalidSuffix(sb, "无法识别的十进制数: ");
         }
 
-        return new Token(getTokenCode("Integer"), sb.toString(),currentLineNum);
+        return new Token(getTokenCode("Integer"), sb.toString(),currentLineNum, currentLineIndex);
     }
 
     /**
@@ -386,7 +386,7 @@ public class ManualLexer {
     private Token errorToken(String message) {
         error.append(message).append("\n");
         // （格式："错误信息: 错误内容"）
-        return new Token(-1, message.split(": ")[1],currentLineNum);
+        return new Token(-1, message.split(": ")[1],currentLineNum, currentLineIndex);
     }
 
     /**
@@ -416,7 +416,7 @@ public class ManualLexer {
                 errorSb.append(consume());
             }
             error.append("无法识别的浮点数: ").append(errorSb).append("\n");
-            return new Token(-1, errorSb.toString(),currentLineNum);
+            return new Token(-1, errorSb.toString(),currentLineNum, currentLineIndex);
         }
 
         // 修改: 增强对异常浮点数的检查
@@ -424,16 +424,16 @@ public class ManualLexer {
             // 如果是以.开头且后面没有数字
             if (sb.length() == 1 && sb.charAt(0) == '.') {
                 error.append("无法识别的浮点数: ").append(sb).append("\n");
-                return new Token(-1, sb.toString(),currentLineNum);
+                return new Token(-1, sb.toString(),currentLineNum, currentLineIndex);
             }
             // 如果是以数字开头，后面跟.但没有数字 (如15.)
             if (peek() != 'e' && peek() != 'E') {
                 error.append("无法识别的浮点数: ").append(sb).append("\n");
-                return new Token(-1, sb.toString(),currentLineNum);
+                return new Token(-1, sb.toString(),currentLineNum, currentLineIndex);
             }
         }
 
-        return new Token(getTokenCode("FloatNumber"), sb.toString(),currentLineNum);
+        return new Token(getTokenCode("FloatNumber"), sb.toString(),currentLineNum, currentLineIndex);
     }
 
     /**
@@ -459,7 +459,7 @@ public class ManualLexer {
             while (isAlpha(peek()) || isDigit(peek()) || peek() == '_' || peek() == '.' ) {
                 sb.append(consume());
             }
-            return new Token(-1, sb.toString(),currentLineNum);
+            return new Token(-1, sb.toString(),currentLineNum, currentLineIndex);
         }
 
         // 消费所有数字
@@ -475,10 +475,10 @@ public class ManualLexer {
                 errorSb.append(consume());
             }
             error.append("无法识别的科学计数法: ").append(errorSb).append("\n");
-            return new Token(-1, errorSb.toString(),currentLineNum);
+            return new Token(-1, errorSb.toString(),currentLineNum, currentLineIndex);
         }
 
-        return new Token(getTokenCode("FloatNumber"), sb.toString(),currentLineNum);
+        return new Token(getTokenCode("FloatNumber"), sb.toString(),currentLineNum, currentLineIndex);
     }
 
     /**
@@ -492,7 +492,7 @@ public class ManualLexer {
         if (peek() == '\'') {
             error.append("无法识别的字符常量: 空字符").append("\n");
             sb.append(consume());
-            return new Token(-1, sb.toString(),currentLineNum);
+            return new Token(-1, sb.toString(),currentLineNum, currentLineIndex);
         }
 
         // 处理转义字符
@@ -518,11 +518,11 @@ public class ManualLexer {
             if (peek() == '\'') {
                 sb.append(consume());
             }
-            return new Token(-1, sb.toString(),currentLineNum);
+            return new Token(-1, sb.toString(),currentLineNum, currentLineIndex);
         }
 
         sb.append(consume()); // 消费结束的单引号
-        return new Token(getTokenCode("Character"), sb.toString(),currentLineNum);
+        return new Token(getTokenCode("Character"), sb.toString(),currentLineNum, currentLineIndex);
     }
 
     /**
@@ -550,11 +550,11 @@ public class ManualLexer {
         if (peek() != '"') {
             // 修改: 更详细的错误提示
             error.append("无法识别的字符串常量: 缺少结束的双引号").append("\n");
-            return new Token(-1, sb.toString(),currentLineNum);
+            return new Token(-1, sb.toString(),currentLineNum, currentLineIndex);
         }
 
         sb.append(consume()); // 消费结束的双引号
-        return new Token(getTokenCode("String"), sb.toString(),currentLineNum);
+        return new Token(getTokenCode("String"), sb.toString(),currentLineNum, currentLineIndex);
     }
 
     /**
@@ -604,7 +604,7 @@ public class ManualLexer {
 
         } else {
             // 单独的'/'运算符（非注释）
-            return new Token(getTokenCode("/"), "/",currentLineNum);
+            return new Token(getTokenCode("/"), "/",currentLineNum, currentLineIndex);
         }
     }
     /**
@@ -642,12 +642,12 @@ public class ManualLexer {
                     sb.append(consume());
                 }
                 // 返回对应的Token
-                return new Token(getTokenCode(op), op,currentLineNum);
+                return new Token(getTokenCode(op), op,currentLineNum, currentLineIndex);
             }
         }
 
         // 如果未匹配到复合运算符，返回单字符运算符Token
-        return new Token(getTokenCode(String.valueOf(c)), String.valueOf(c),currentLineNum);
+        return new Token(getTokenCode(String.valueOf(c)), String.valueOf(c),currentLineNum, currentLineIndex);
     }
 
     /**
@@ -655,7 +655,7 @@ public class ManualLexer {
      */
     private Token scanDelimiter() {
         char c = consume();
-        return new Token(getTokenCode(String.valueOf(c)), String.valueOf(c),currentLineNum);
+        return new Token(getTokenCode(String.valueOf(c)), String.valueOf(c),currentLineNum, currentLineIndex);
     }
 
     /**
@@ -708,7 +708,7 @@ public class ManualLexer {
             }
 
             error.append("异常浮点数: 以点开头的数字 ").append(sb.toString()).append("\n");
-            return new Token(-1, sb.toString(),currentLineNum);
+            return new Token(-1, sb.toString(),currentLineNum, currentLineIndex);
         }
 
         // 处理字符串
@@ -741,7 +741,7 @@ public class ManualLexer {
         // 处理非法字符
         error.append("无法识别的字符: ").append(c).append("\n");
         consume();
-        return new Token(-1, String.valueOf(c),currentLineNum);
+        return new Token(-1, String.valueOf(c),currentLineNum, currentLineIndex);
     }
 
 

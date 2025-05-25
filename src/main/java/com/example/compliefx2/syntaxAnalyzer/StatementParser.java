@@ -1,21 +1,15 @@
 package com.example.compliefx2.syntaxAnalyzer;
 
-import com.example.compliefx2.ManualLexer;
-import com.example.compliefx2.Token;
+import com.example.compliefx2.*;
+import com.example.compliefx2.intermediateCode.IntermediateCodeGenerator;
+import com.example.compliefx2.intermediateCode.Quadruple;
+
 import java.io.IOException;
 import java.io.Reader;
+import java.util.List;
 import java.util.Map;
 
 /**
- * 语句和程序结构分析器，扩展了已有的表达式解析器
- * 实现以下功能：
- * 1. 程序结构解析（Program）
- * 2. 主函数解析（void main(){}）
- * 3. 语句块解析（StatementList）
- * 4. if语句解析（IfStatement）
- * 5. 简单声明语句解析（Declaration）
- * 6. while语句解析（WhileStatement）
- * 7. for语句解析（ForStatement）
  *
  * 文法规则：
  * 程序 → 函数声明列表
@@ -34,21 +28,6 @@ import java.util.Map;
  * while语句 → while ( 表达式 ) 语句
  * for语句 → for ( ForInit 表达式语句 表达式 ) 语句
  * ForInit → 声明语句 | 表达式语句
- *
- * 文法规则如下：
- * Program → FunctionDeclaration
- * FunctionDeclaration → "void" "main" "(" ")" "{" StatementList "}"
- * TypeSpecifier → "int" | "float" | "void" | "char" | "string"
- * StatementList → Statement StatementList | ε
- * Statement → ExpressionStatement | CompoundStatement | IfStatement | Declaration | WhileStatement | ForStatement
- * ExpressionStatement → Expression ";" | ";"
- * CompoundStatement → "{" StatementList "}"
- * IfStatement → "if" "(" Expression ")" Statement ElsePart
- * ElsePart → "else" Statement | ε
- * Declaration → TypeSpecifier Identifier ("=" Expression)? ";"
- * WhileStatement → "while" "(" Expression ")" Statement
- * ForStatement → "for" "(" ForInit ExpressionStatement Expression ")" Statement
- * ForInit → Declaration | ExpressionStatement
  */
 public class StatementParser extends UnifiedExpressionParser {
 
@@ -72,16 +51,33 @@ public class StatementParser extends UnifiedExpressionParser {
     private int TOKEN_RBRACE;    // }
     private int TOKEN_COMMA;    // ,
 
+    // 添加当前AST节点
+    private ASTNode currentAST;
+    // 添加中间代码生成器
+    private IntermediateCodeGenerator codeGenerator;
+
+
     /**
-     * 构造函数
-     * @param reader 输入源
-     * @param tokenMap Token映射表
-     * @throws IOException 如果IO操作失败
+     * 构造函数 - 修改版本
      */
     public StatementParser(Reader reader, Map<String, Integer> tokenMap) throws IOException {
-        super(reader, tokenMap); // 调用父类构造函数
-        // 初始化语句相关Token类型
+        super(reader, tokenMap);
         initStatementTokenTypes(tokenMap);
+        // 初始化中间代码生成器
+        this.codeGenerator = new IntermediateCodeGenerator();
+    }
+    /**
+     * 获取中间代码生成器
+     */
+    public IntermediateCodeGenerator getCodeGenerator() {
+        return codeGenerator;
+    }
+
+    /**
+     * 获取生成的AST
+     */
+    public ASTNode getAST() {
+        return currentAST;
     }
 
     /**
@@ -108,32 +104,29 @@ public class StatementParser extends UnifiedExpressionParser {
         TOKEN_RBRACE = tokenMap.getOrDefault("}", 302);
         TOKEN_COMMA = tokenMap.getOrDefault(",", 304);
 
-        System.out.println("语句解析器Token类型初始化：" +
-                "int=" + TOKEN_INT +
-                ", if=" + TOKEN_IF +
-                ", else=" + TOKEN_ELSE +
-                ", while=" + TOKEN_WHILE +
-                ", for=" + TOKEN_FOR +
-                ", {=" + TOKEN_LBRACE +
-                ", }=" + TOKEN_RBRACE +
-                ", ;=" + TOKEN_SEMICOLON);
     }
 
     /**
-     * 解析程序
-     * 程序 → 函数声明
-     * @return 解析是否成功
-     * @throws IOException 如果IO操作失败
+     * 解析程序 - 修改版本，添加中间代码生成
      */
     public boolean parseProgram() throws IOException {
         try {
             addToParseTree("程序 → 函数声明列表");
-            parseFunctionDeclarationList();
-            // 检查是否所有Token都已处理完毕
+            currentAST = new ASTNode(ASTNode.NodeType.PROGRAM);
+            parseFunctionDeclarationList(currentAST);
+
             if (currentToken != null && currentToken.type != -1 && currentToken.type != 0) {
                 error("程序结束后存在额外的Token: " + currentToken.value);
                 return false;
             }
+
+            // 生成中间代码
+            if (getErrorMsg().isEmpty()) {
+                System.out.println("\n=== 开始生成中间代码 ===");
+                codeGenerator.generateCode(currentAST);
+                System.out.println("=== 中间代码生成完成 ===");
+            }
+
             return getErrorMsg().isEmpty();
         } catch (Exception e) {
             error("解析程序时发生异常: " + e.getMessage());
@@ -147,19 +140,19 @@ public class StatementParser extends UnifiedExpressionParser {
      * 函数声明列表 → 函数声明 函数声明列表 | ε
      * @throws IOException 如果IO操作失败
      */
-    private void parseFunctionDeclarationList() throws IOException {
+    private void parseFunctionDeclarationList(ASTNode parent) throws IOException {
         indentLevel++;
         try {
-            // 同样先给出整条文法提示
             addToParseTree("函数声明列表 → 函数声明 函数声明列表 | ε");
 
-            // 只要下一个是类型说明符，就循环解析一个函数声明
             while (isTypeSpecifier()) {
                 addToParseTree("函数声明列表 → 函数声明 函数声明列表");
-                parseFunctionDeclaration();
+                ASTNode functionNode = parseFunctionDeclaration();
+                if (functionNode != null) {
+                    parent.addChild(functionNode);
+                }
             }
 
-            // 如果一开始就不是类型说明符，或解析完所有声明后，就归到 ε
             addToParseTree("函数声明列表 → 空");
         } finally {
             indentLevel--;
@@ -179,15 +172,19 @@ public class StatementParser extends UnifiedExpressionParser {
      * 类型说明符 → int | float | void | char | string
      * @throws IOException 如果IO操作失败
      */
-    private void parseTypeSpecifier() throws IOException {
+    private String parseTypeSpecifier() throws IOException {
         indentLevel++;
         try {
-            if (match(TOKEN_INT) || match(TOKEN_FLOAT) || match(TOKEN_VOID) || match(TOKEN_CHAR) || match(TOKEN_STRING)) {
-                addToParseTree("类型说明符 → " + currentToken.value);
-                addToParseTree("匹配类型说明符: " + currentToken.value);
+            if (match(TOKEN_INT) || match(TOKEN_FLOAT) || match(TOKEN_VOID) ||
+                    match(TOKEN_CHAR) || match(TOKEN_STRING)) {
+                String type = currentToken.value;
+                addToParseTree("类型说明符 → " + type);
+                addToParseTree("匹配类型说明符: " + type);
                 advance();
+                return type;
             } else {
                 error("期望类型说明符 (int, float, void, char, string)");
+                return null;
             }
         } finally {
             indentLevel--;
@@ -198,20 +195,29 @@ public class StatementParser extends UnifiedExpressionParser {
      * 函数声明 → 类型说明符 标识符 ( 形参列表 ) { 语句列表 }
      * @throws IOException 如果IO操作失败
      */
-    private void parseFunctionDeclaration() throws IOException {
+    private ASTNode parseFunctionDeclaration() throws IOException {
         indentLevel++;
         try {
             addToParseTree("函数声明 → 类型说明符 标识符 ( 形参列表 ) { 语句列表 }");
+
+            ASTNode functionNode = new ASTNode(ASTNode.NodeType.FUNCTION_DEF);
+
             // 解析返回类型
-            parseTypeSpecifier();
+            String returnType = parseTypeSpecifier();
+            if (returnType != null) {
+                functionNode.setValue(returnType);
+            }
 
             // 解析函数名标识符
             if (match(TOKEN_ID)) {
+                ASTNode nameNode = ASTNode.createIdentifier(currentToken.value,
+                        currentToken.getLineNumber(), currentToken.getColumnNumber());
+                functionNode.addChild(nameNode);
                 addToParseTree("匹配函数名: " + currentToken.value);
                 advance();
             } else {
                 error("期望函数名标识符");
-                return;
+                return null;
             }
 
             // 解析左括号
@@ -220,11 +226,14 @@ public class StatementParser extends UnifiedExpressionParser {
                 advance();
             } else {
                 error("期望 '('");
-                return;
+                return null;
             }
 
             // 解析形参列表
-            parseParameterList();
+            ASTNode paramListNode = parseParameterList();
+            if (paramListNode != null) {
+                functionNode.addChild(paramListNode);
+            }
 
             // 解析右括号
             if (match(TOKEN_RPAREN)) {
@@ -232,7 +241,7 @@ public class StatementParser extends UnifiedExpressionParser {
                 advance();
             } else {
                 error("期望 ')'");
-                return;
+                return null;
             }
 
             // 解析左大括号
@@ -241,11 +250,13 @@ public class StatementParser extends UnifiedExpressionParser {
                 advance();
             } else {
                 error("期望 '{'");
-                return;
+                return null;
             }
 
             // 解析语句列表
-            parseStatementList();
+            ASTNode bodyNode = ASTNode.createBlockStmt();
+            parseStatementList(bodyNode);
+            functionNode.addChild(bodyNode);
 
             // 解析右大括号
             if (match(TOKEN_RBRACE)) {
@@ -254,6 +265,8 @@ public class StatementParser extends UnifiedExpressionParser {
             } else {
                 error("期望 '}'");
             }
+
+            return functionNode;
         } finally {
             indentLevel--;
         }
@@ -264,24 +277,31 @@ public class StatementParser extends UnifiedExpressionParser {
      * 形参列表 → 形参 , 形参列表 | 形参 | ε
      * @throws IOException 如果IO操作失败
      */
-    private void parseParameterList() throws IOException {
+    private ASTNode parseParameterList() throws IOException {
         indentLevel++;
         try {
-            // 检查是否是类型说明符，形参必须以类型说明符开始
+            ASTNode paramListNode = new ASTNode(ASTNode.NodeType.PARAMETER_LIST);
+
             if (isTypeSpecifier()) {
                 addToParseTree("形参列表 → 形参列表的内容");
-                parseParameter();  // 解析第一个形参
+                ASTNode param = parseParameter();
+                if (param != null) {
+                    paramListNode.addChild(param);
+                }
 
-                // 检查是否有更多形参
                 while (match(TOKEN_COMMA)) {
                     addToParseTree("匹配逗号: ,");
                     advance();
-                    parseParameter();  // 解析下一个形参
+                    param = parseParameter();
+                    if (param != null) {
+                        paramListNode.addChild(param);
+                    }
                 }
             } else {
-                // 如果不是类型说明符，则表示形参列表为空
                 addToParseTree("形参列表 → 空");
             }
+
+            return paramListNode;
         } finally {
             indentLevel--;
         }
@@ -291,19 +311,32 @@ public class StatementParser extends UnifiedExpressionParser {
      * 形参 → 类型说明符 标识符
      * @throws IOException 如果IO操作失败
      */
-    private void parseParameter() throws IOException {
+    private ASTNode parseParameter() throws IOException {
         indentLevel++;
         try {
             addToParseTree("形参 → 类型说明符 标识符");
-            parseTypeSpecifier();  // 解析类型说明符
+
+            ASTNode paramNode = new ASTNode(ASTNode.NodeType.DECLARATION_STMT);
+
+            // 解析类型说明符
+            String type = parseTypeSpecifier();
+            if (type != null) {
+                paramNode.setValue(type);
+            }
 
             // 解析参数名标识符
             if (match(TOKEN_ID)) {
+                ASTNode nameNode = ASTNode.createIdentifier(currentToken.value,
+                        currentToken.getLineNumber(), currentToken.getColumnNumber());
+                paramNode.addChild(nameNode);
                 addToParseTree("匹配参数名: " + currentToken.value);
                 advance();
             } else {
                 error("期望参数名标识符");
+                return null;
             }
+
+            return paramNode;
         } finally {
             indentLevel--;
         }
@@ -314,19 +347,19 @@ public class StatementParser extends UnifiedExpressionParser {
      * 语句列表 → 语句 语句列表 | 空
      * @throws IOException 如果IO操作失败
      */
-    private void parseStatementList() throws IOException {
+    private void parseStatementList(ASTNode parent) throws IOException {
         indentLevel++;
         try {
-            // 无论是否有语句，先打出这一条分支提示
             addToParseTree("语句列表 → 语句 语句列表 | 空");
 
-            // 只要是语句起始，就一直解析下去
             while (isStatementStart()) {
                 addToParseTree("语句列表 → 语句 语句列表");
-                parseStatement();
+                ASTNode stmtNode = parseStatement();
+                if (stmtNode != null) {
+                    parent.addChild(stmtNode);
+                }
             }
 
-            // 循环结束后，要么遇到右大括号/EOF，要么是个非法起始
             if (match(TOKEN_RBRACE) || currentToken == null || currentToken.type == -1) {
                 addToParseTree("语句列表 → 空");
             } else {
@@ -355,31 +388,28 @@ public class StatementParser extends UnifiedExpressionParser {
      * 语句 → 表达式语句 | 复合语句 | 条件语句 | 声明语句 | while语句 | for语句 | 函数调用语句
      * @throws IOException 如果IO操作失败
      */
-    private void parseStatement() throws IOException {
+    private ASTNode parseStatement() throws IOException {
         indentLevel++;
         try {
             if (match(TOKEN_LBRACE)) {
                 addToParseTree("语句 → 复合语句");
-                parseCompoundStatement();
+                return parseCompoundStatement();
             } else if (match(TOKEN_IF)) {
                 addToParseTree("语句 → 条件语句");
-                parseIfStatement();
+                return parseIfStatement();
             } else if (match(TOKEN_WHILE)) {
                 addToParseTree("语句 → while语句");
-                parseWhileStatement();
+                return parseWhileStatement();
             } else if (match(TOKEN_FOR)) {
                 addToParseTree("语句 → for语句");
-                parseForStatement();
-            } else if (match(TOKEN_INT) || match(TOKEN_FLOAT) || match(TOKEN_VOID) || match(TOKEN_CHAR) || match(TOKEN_STRING)) {
+                return parseForStatement();
+            } else if (match(TOKEN_INT) || match(TOKEN_FLOAT) || match(TOKEN_VOID) ||
+                    match(TOKEN_CHAR) || match(TOKEN_STRING)) {
                 addToParseTree("语句 → 声明语句");
-                parseDeclaration();
-            } else if (match(TOKEN_ID) && lexer.peekNextToken().type == TOKEN_LPAREN) {
-                // 如果当前是标识符，并且下一个token是左括号，那可能是函数调用
-                addToParseTree("语句 → 函数调用语句");
-                parseFunctionCall();
+                return parseDeclaration();
             } else {
                 addToParseTree("语句 → 表达式语句");
-                parseExpressionStatement();
+                return parseExpressionStatement();
             }
         } finally {
             indentLevel--;
@@ -469,22 +499,26 @@ public class StatementParser extends UnifiedExpressionParser {
      * 表达式语句 → 表达式 ; | ;
      * @throws IOException 如果IO操作失败
      */
-    private void parseExpressionStatement() throws IOException {
+    private ASTNode parseExpressionStatement() throws IOException {
         indentLevel++;
         try {
             if (match(TOKEN_SEMICOLON)) {
-                addToParseTree("表达式语句 → ;");
-                addToParseTree("匹配分号: ;");
                 advance();
+                return ASTNode.createExpressionStmt(null); // 空语句
             } else {
-                addToParseTree("表达式语句 → 表达式 ;");
-                S();  // 使用已有的表达式解析方法
+                // ✅ 直接调用父类的S()解析表达式，并获取生成的AST
+                ASTNode exprAST = S(); // 解析表达式
+                if (exprAST == null) {
+                    error("无效的表达式");
+                    return null;
+                }
                 if (match(TOKEN_SEMICOLON)) {
-                    addToParseTree("匹配分号: ;");
                     advance();
                 } else {
                     error("期望 ';' 分号");
                 }
+                // ✅ 使用解析得到的exprAST构建表达式语句
+                return ASTNode.createExpressionStmt(exprAST);
             }
         } finally {
             indentLevel--;
@@ -496,24 +530,30 @@ public class StatementParser extends UnifiedExpressionParser {
      * 复合语句 → { 语句列表 }
      * @throws IOException 如果IO操作失败
      */
-    private void parseCompoundStatement() throws IOException {
+    private ASTNode parseCompoundStatement() throws IOException {
         indentLevel++;
         try {
             addToParseTree("复合语句 → { 语句列表 }");
+
             if (match(TOKEN_LBRACE)) {
                 addToParseTree("匹配左大括号: {");
                 advance();
             } else {
                 error("期望 '{'");
-                return;
+                return null;
             }
-            parseStatementList();
+
+            ASTNode blockNode = ASTNode.createBlockStmt();
+            parseStatementList(blockNode);
+
             if (match(TOKEN_RBRACE)) {
                 addToParseTree("匹配右大括号: }");
                 advance();
             } else {
                 error("期望 '}'");
             }
+
+            return blockNode;
         } finally {
             indentLevel--;
         }
@@ -524,34 +564,48 @@ public class StatementParser extends UnifiedExpressionParser {
      * 条件语句 → if ( 表达式 ) 语句 else部分
      * @throws IOException 如果IO操作失败
      */
-    private void parseIfStatement() throws IOException {
+    private ASTNode parseIfStatement() throws IOException {
         indentLevel++;
         try {
             addToParseTree("条件语句 → if ( 表达式 ) 语句 else部分");
+
             if (match(TOKEN_IF)) {
                 addToParseTree("匹配条件关键字: if");
                 advance();
             } else {
                 error("期望 'if'");
-                return;
+                return null;
             }
+
             if (match(TOKEN_LPAREN)) {
                 addToParseTree("匹配左括号: (");
                 advance();
             } else {
                 error("期望 '('");
-                return;
+                return null;
             }
-            S();  // 解析条件表达式
+
+//            // 解析条件表达式
+//            S();
+//            ASTNode conditionNode = super.getAST();
+            // 解析条件表达式
+            ASTNode conditionNode = S();
+
             if (match(TOKEN_RPAREN)) {
                 addToParseTree("匹配右括号: )");
                 advance();
             } else {
                 error("期望 ')'");
-                return;
+                return null;
             }
-            parseStatement();  // 解析if块中的语句
-            parseElsePart();   // 解析else部分
+
+            // 解析then语句
+            ASTNode thenStmt = parseStatement();
+
+            // 解析else部分
+            ASTNode elseStmt = parseElsePart();
+
+            return ASTNode.createIfStmt(conditionNode, thenStmt, elseStmt);
         } finally {
             indentLevel--;
         }
@@ -562,16 +616,17 @@ public class StatementParser extends UnifiedExpressionParser {
      * else部分 → else 语句 | 空
      * @throws IOException 如果IO操作失败
      */
-    private void parseElsePart() throws IOException {
+    private ASTNode parseElsePart() throws IOException {
         indentLevel++;
         try {
             if (match(TOKEN_ELSE)) {
                 addToParseTree("else部分 → else 语句");
                 addToParseTree("匹配else关键字: else");
                 advance();
-                parseStatement();  // 解析else块中的语句
+                return parseStatement();
             } else {
                 addToParseTree("else部分 → 空");
+                return null;
             }
         } finally {
             indentLevel--;
@@ -583,30 +638,51 @@ public class StatementParser extends UnifiedExpressionParser {
      * 声明语句 → 类型说明符 标识符 = 表达式 ;
      * @throws IOException 如果IO操作失败
      */
-    private void parseDeclaration() throws IOException {
+
+    private ASTNode parseDeclaration() throws IOException {
         indentLevel++;
         try {
             addToParseTree("声明语句 → 类型说明符 标识符 = 表达式 ;");
-            parseTypeSpecifier();  // 解析类型说明符
+
+            ASTNode declNode = new ASTNode(ASTNode.NodeType.DECLARATION_STMT);
+
+            // 解析类型说明符
+            String type = parseTypeSpecifier();
+            if (type != null) {
+                declNode.setValue(type);
+            }
+
+            // 解析标识符
             if (match(TOKEN_ID)) {
+                ASTNode idNode = ASTNode.createIdentifier(currentToken.value,
+                        currentToken.getLineNumber(), currentToken.getColumnNumber());
+                declNode.addChild(idNode);
                 addToParseTree("匹配标识符: " + currentToken.value);
                 advance();
             } else {
                 error("期望标识符");
-                return;
+                return null;
             }
+
             // 处理可选的初始化部分
             if (match(TOKEN_ASSIGN)) {
                 addToParseTree("匹配赋值符号: =");
                 advance();
-                S();  // 解析初始化表达式
+                // 修复：只调用一次S()方法并保存结果
+                ASTNode initExpr = S(); // 解析初始化表达式
+                if (initExpr != null) {
+                    declNode.addChild(initExpr);
+                }
             }
+
             if (match(TOKEN_SEMICOLON)) {
                 addToParseTree("匹配分号: ;");
                 advance();
             } else {
                 error("期望 ';' 分号");
             }
+
+            return declNode;
         } finally {
             indentLevel--;
         }
@@ -617,33 +693,45 @@ public class StatementParser extends UnifiedExpressionParser {
      * while语句 → while ( 表达式 ) 语句
      * @throws IOException 如果IO操作失败
      */
-    private void parseWhileStatement() throws IOException {
+    private ASTNode parseWhileStatement() throws IOException {
         indentLevel++;
         try {
             addToParseTree("while语句 → while ( 表达式 ) 语句");
+
             if (match(TOKEN_WHILE)) {
                 addToParseTree("匹配循环关键字: while");
                 advance();
             } else {
                 error("期望 'while'");
-                return;
+                return null;
             }
+
             if (match(TOKEN_LPAREN)) {
                 addToParseTree("匹配左括号: (");
                 advance();
             } else {
                 error("期望 '('");
-                return;
+                return null;
             }
-            S();  // 解析循环条件表达式
+
+//            // 解析循环条件表达式
+//            S();
+//            ASTNode conditionNode = super.getAST();
+            // 解析循环条件表达式
+            ASTNode conditionNode = S();
+
             if (match(TOKEN_RPAREN)) {
                 addToParseTree("匹配右括号: )");
                 advance();
             } else {
                 error("期望 ')'");
-                return;
+                return null;
             }
-            parseStatement();  // 解析while循环体中的语句
+
+            // 解析while循环体中的语句
+            ASTNode bodyNode = parseStatement();
+
+            return ASTNode.createWhileStmt(conditionNode, bodyNode);
         } finally {
             indentLevel--;
         }
@@ -654,54 +742,135 @@ public class StatementParser extends UnifiedExpressionParser {
      * for语句 → for ( 表达式语句 表达式语句 表达式 ) 语句
      * @throws IOException 如果IO操作失败
      */
-    private void parseForStatement() throws IOException {
+    private ASTNode parseForStatement() throws IOException {
         indentLevel++;
         try {
             addToParseTree("for语句 → for ( 表达式语句 表达式语句 表达式 ) 语句");
+
             if (match(TOKEN_FOR)) {
                 addToParseTree("匹配循环关键字: for");
                 advance();
             } else {
                 error("期望 'for'");
-                return;
+                return null;
             }
+
             if (match(TOKEN_LPAREN)) {
                 addToParseTree("匹配左括号: (");
                 advance();
             } else {
                 error("期望 '('");
-                return;
+                return null;
             }
 
-            // 允许声明语句作为初始化
+            ASTNode forNode = new ASTNode(ASTNode.NodeType.FOR_STMT);
+
+            // 解析初始化部分
             addToParseTree("解析for循环初始化表达式");
-            // 检查是否是声明语句
-            if (match(TOKEN_INT) || match(TOKEN_FLOAT) || match(TOKEN_VOID) || match(TOKEN_CHAR) || match(TOKEN_STRING)) {
-                parseDeclaration();
+            ASTNode initNode = null;
+            if (match(TOKEN_INT) || match(TOKEN_FLOAT) || match(TOKEN_VOID) ||
+                    match(TOKEN_CHAR) || match(TOKEN_STRING)) {
+                initNode = parseDeclaration();
             } else {
-                parseExpressionStatement();
+                initNode = parseExpressionStatement();
+            }
+            if (initNode != null) {
+                forNode.addChild(initNode);
             }
 
             // 解析条件表达式语句
             addToParseTree("解析for循环条件表达式");
-            parseExpressionStatement();
+            ASTNode conditionNode = parseExpressionStatement();
+            if (conditionNode != null) {
+                forNode.addChild(conditionNode);
+            }
 
+//            // 解析迭代表达式
+//            addToParseTree("解析for循环迭代表达式");
+//            S();
+//            ASTNode iterNode = super.getAST();
             // 解析迭代表达式
             addToParseTree("解析for循环迭代表达式");
-            S();  // 使用已有的表达式解析方法
+            ASTNode iterNode = S();
+            if (iterNode != null) {
+                forNode.addChild(iterNode);
+            }
 
             if (match(TOKEN_RPAREN)) {
                 addToParseTree("匹配右括号: )");
                 advance();
             } else {
                 error("期望 ')'");
-                return;
+                return null;
             }
 
             // 解析for循环体
-            parseStatement();
+            ASTNode bodyNode = parseStatement();
+            if (bodyNode != null) {
+                forNode.addChild(bodyNode);
+            }
+
+            return forNode;
         } finally {
             indentLevel--;
+        }
+    }
+
+    /**
+     * 主函数 - 修改版本，展示中间代码生成
+     */
+    public static void main(String[] args) {
+        String[] testPrograms = {
+//                "void main() { int x = 5; }",
+//                "void main() { int x = 5; int y = x + 10; }",
+//                "void main() { if (x > 0) { y = x + 1; } else { y = 0; } }",
+//                "void main() { while (i < 10) { i = i + 1; } }",
+                "void main() { for (int i = 0; i < 10; i = i + 1) { sum = sum + i; } }",
+//                "void main() { int a = 3; int b = 4; int c = a + b * 2; }"
+
+        };
+
+        Map<String, Integer> tokenMap = TokenLibrary.readToken("C:\\Users\\WYR\\Desktop\\编译原理\\compliefx2\\src\\main\\resources\\com\\example\\compliefx2\\tokenTable.json");
+
+        for (String program : testPrograms) {
+            try {
+                System.out.println("\n" + "=".repeat(60));
+                System.out.println("测试程序: " + program);
+                System.out.println("=".repeat(60));
+
+                StatementParser parser = new StatementParser(new java.io.StringReader(program), tokenMap);
+                boolean isValid = parser.parseProgram();
+
+                System.out.println("解析结果: " + (isValid ? "成功" : "失败"));
+
+                if (!parser.getErrorMsg().isEmpty()) {
+                    System.out.println("\n错误信息:");
+                    System.out.println(parser.getErrorMsg());
+                }
+
+                // 输出AST
+                ASTNode ast = parser.getAST();
+                if (ast != null) {
+                    System.out.println("\nAST结构:");
+                    System.out.println(ast.toString());
+                }
+
+                // 输出中间代码
+                if (isValid) {
+                    System.out.println("\n中间代码:");
+                    parser.getCodeGenerator().printQuadruples();
+                }
+
+                // 输出目标代码
+                if (isValid) {
+                    CodeGenerator gen = new CodeGenerator();
+                    String asm = gen.generateAssembly();
+                    System.out.println("\n生成的汇编代码:\n" + asm);
+                }
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 }
