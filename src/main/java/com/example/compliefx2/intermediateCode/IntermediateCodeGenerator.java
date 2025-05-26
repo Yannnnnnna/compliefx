@@ -87,35 +87,35 @@ public class IntermediateCodeGenerator {
         if (node == null) return null;
 
         switch (node.getType()) {
-            case PROGRAM:
+            case PROGRAM: //  程序
                 return generateProgramCode(node);
-            case FUNCTION_DEF:
+            case FUNCTION_DEF: // 函数定义
                 return generateFunctionCode(node);
-            case BLOCK_STMT:
+            case BLOCK_STMT: // 块语句
                 return generateBlockCode(node);
-            case IF_STMT:
+            case IF_STMT: // if语句
                 return generateIfCode(node);
-            case WHILE_STMT:
+            case WHILE_STMT: // while语句
                 return generateWhileCode(node);
-            case FOR_STMT:
+            case FOR_STMT: // for语句
                 return generateForCode(node);
-            case DECLARATION_STMT:
+            case DECLARATION_STMT: // 声明语句
                 return generateDeclarationCode(node);
-            case EXPRESSION_STMT:
+            case EXPRESSION_STMT: // 表达式语句
                 return generateExpressionCode(node);
-            case ASSIGNMENT:
+            case ASSIGNMENT: // 赋值语句
                 return generateAssignmentCode(node);
-            case BINARY_OP:
+            case BINARY_OP: // 二元运算符
                 return generateBinaryOpCode(node);
-            case UNARY_OP:
+            case UNARY_OP: // 一元运算符
                 return generateUnaryOpCode(node);
-            case IDENTIFIER:
+            case IDENTIFIER: // 标识符
                 return node.getValue();
-            case INT_LITERAL:
-            case FLOAT_LITERAL:
-            case STRING_LITERAL:
-            case CHAR_LITERAL:
-            case BOOL_LITERAL:
+            case INT_LITERAL:   //  整数字面量
+            case FLOAT_LITERAL: //  浮点数字面量
+            case STRING_LITERAL: // 字符串字面量
+            case CHAR_LITERAL: //  字符字面量
+            case BOOL_LITERAL: //  布尔字面量
                 return node.getValue();
             default:
                 return null;
@@ -137,11 +137,11 @@ public class IntermediateCodeGenerator {
      */
     private String generateFunctionCode(ASTNode node) {
         String functionName = node.getChildren().get(0).getValue(); // 函数名
-        emit("FUNC", functionName, "", "");
+        emit("FUNC", functionName, "", ""); // 生成函数声明
 
         // 处理函数体
         for (int i = 2; i < node.getChildren().size(); i++) {
-            generateCode(node.getChildren().get(i));
+            generateCode(node.getChildren().get(i)); // 处理函数体
         }
 
         emit("ENDFUNC", functionName, "", "");
@@ -442,4 +442,415 @@ public class IntermediateCodeGenerator {
         }
         return sb.toString();
     }
+// ========== 代码优化相关方法 ==========
+
+    /**
+     * 执行代码优化
+     */
+    public void optimize() {
+        System.out.println("开始代码优化...");
+        int rounds = 0;
+        boolean changed = true;
+
+        while (changed && rounds < 10) { // 最多10轮优化
+            changed = false;
+            rounds++;
+
+            System.out.println("第 " + rounds + " 轮优化:");
+
+            changed |= constantFolding();
+            changed |= constantPropagation();
+            changed |= algebraicSimplification();
+            changed |= deadCodeElimination();
+            changed |= jumpOptimization();
+
+            if (changed) {
+                System.out.println("  - 本轮有优化");
+            } else {
+                System.out.println("  - 本轮无优化，结束");
+            }
+        }
+
+        System.out.println("优化完成，共进行了 " + rounds + " 轮优化");
+    }
+
+    /**
+     * 常量折叠优化
+     */
+    private boolean constantFolding() {
+        boolean changed = false;
+
+        for (int i = 0; i < quadruples.size(); i++) {
+            Quadruple quad = quadruples.get(i);
+            String op = quad.getOp();
+
+            // 跳过非运算指令
+            if (!isArithmeticOp(op) && !isComparisonOp(op) && !isLogicalOp(op)) {
+                continue;
+            }
+
+            String arg1 = quad.getArg1();
+            String arg2 = quad.getArg2();
+
+            // 检查是否都是常量
+            if (isConstant(arg1) && isConstant(arg2)) {
+                String result = evaluateConstantExpression(op, arg1, arg2);
+                if (result != null) {
+                    // 替换为赋值语句
+                    quad.setOp("=");
+                    quad.setArg1(result);
+                    quad.setArg2("");
+                    changed = true;
+                }
+            }
+        }
+
+        return changed;
+    }
+
+    /**
+     * 常量传播优化
+     */
+    private boolean constantPropagation() {
+        boolean changed = false;
+
+        // 建立常量表：变量名 -> 常量值
+        java.util.Map<String, String> constants = new java.util.HashMap<>();
+
+        for (int i = 0; i < quadruples.size(); i++) {
+            Quadruple quad = quadruples.get(i);
+            String op = quad.getOp();
+
+            // 记录常量赋值
+            if ("=".equals(op) && isConstant(quad.getArg1())) {
+                constants.put(quad.getResult(), quad.getArg1());
+            } else if ("=".equals(op) && constants.containsKey(quad.getArg1())) {
+                // 传播常量
+                constants.put(quad.getResult(), constants.get(quad.getArg1()));
+            } else {
+                // 替换操作数中的常量
+                if (constants.containsKey(quad.getArg1())) {
+                    quad.setArg1(constants.get(quad.getArg1()));
+                    changed = true;
+                }
+                if (constants.containsKey(quad.getArg2())) {
+                    quad.setArg2(constants.get(quad.getArg2()));
+                    changed = true;
+                }
+
+                // 如果变量被重新赋值，从常量表中移除
+                if (!"LABEL".equals(op) && !"JMP".equals(op) &&
+                        !"JZ".equals(op) && !"JNZ".equals(op) &&
+                        !quad.getResult().isEmpty()) {
+                    constants.remove(quad.getResult());
+                }
+            }
+        }
+
+        return changed;
+    }
+
+    /**
+     * 代数化简优化
+     */
+    private boolean algebraicSimplification() {
+        boolean changed = false;
+
+        for (int i = 0; i < quadruples.size(); i++) {
+            Quadruple quad = quadruples.get(i);
+            String op = quad.getOp();
+            String arg1 = quad.getArg1();
+            String arg2 = quad.getArg2();
+
+            String simplified = null;
+
+            switch (op) {
+                case "+":
+                    if ("0".equals(arg1)) {
+                        simplified = arg2; // 0 + x = x
+                    } else if ("0".equals(arg2)) {
+                        simplified = arg1; // x + 0 = x
+                    }
+                    break;
+
+                case "-":
+                    if ("0".equals(arg2)) {
+                        simplified = arg1; // x - 0 = x
+                    } else if (arg1.equals(arg2)) {
+                        simplified = "0"; // x - x = 0
+                    }
+                    break;
+
+                case "*":
+                    if ("0".equals(arg1) || "0".equals(arg2)) {
+                        simplified = "0"; // x * 0 = 0
+                    } else if ("1".equals(arg1)) {
+                        simplified = arg2; // 1 * x = x
+                    } else if ("1".equals(arg2)) {
+                        simplified = arg1; // x * 1 = x
+                    }
+                    break;
+
+                case "/":
+                    if ("1".equals(arg2)) {
+                        simplified = arg1; // x / 1 = x
+                    } else if ("0".equals(arg1)) {
+                        simplified = "0"; // 0 / x = 0
+                    }
+                    break;
+
+                case "&&":
+                    if ("true".equals(arg1)) {
+                        simplified = arg2; // true && x = x
+                    } else if ("true".equals(arg2)) {
+                        simplified = arg1; // x && true = x
+                    } else if ("false".equals(arg1) || "false".equals(arg2)) {
+                        simplified = "false"; // false && x = false
+                    }
+                    break;
+
+                case "||":
+                    if ("false".equals(arg1)) {
+                        simplified = arg2; // false || x = x
+                    } else if ("false".equals(arg2)) {
+                        simplified = arg1; // x || false = x
+                    } else if ("true".equals(arg1) || "true".equals(arg2)) {
+                        simplified = "true"; // true || x = true
+                    }
+                    break;
+            }
+
+            if (simplified != null) {
+                quad.setOp("=");
+                quad.setArg1(simplified);
+                quad.setArg2("");
+                changed = true;
+            }
+        }
+
+        return changed;
+    }
+
+    /**
+     * 死代码消除优化
+     */
+    private boolean deadCodeElimination() {
+        boolean changed = false;
+
+        // 标记所有被使用的变量
+        java.util.Set<String> usedVars = new java.util.HashSet<>();
+
+        // 第一遍：收集所有被使用的变量
+        for (Quadruple quad : quadruples) {
+            String op = quad.getOp();
+
+            // 跳过标签和跳转指令的结果字段
+            if (!"LABEL".equals(op)) {
+                if (!quad.getArg1().isEmpty() && !isConstant(quad.getArg1())) {
+                    usedVars.add(quad.getArg1());
+                }
+                if (!quad.getArg2().isEmpty() && !isConstant(quad.getArg2())) {
+                    usedVars.add(quad.getArg2());
+                }
+            }
+
+            // 对于跳转指令，操作数也是被使用的
+            if ("JZ".equals(op) || "JNZ".equals(op)) {
+                if (!quad.getArg1().isEmpty() && !isConstant(quad.getArg1())) {
+                    usedVars.add(quad.getArg1());
+                }
+            }
+        }
+
+        // 第二遍：删除未使用的赋值语句
+        for (int i = quadruples.size() - 1; i >= 0; i--) {
+            Quadruple quad = quadruples.get(i);
+            String op = quad.getOp();
+            String result = quad.getResult();
+
+            // 删除未使用的临时变量赋值
+            if ("=".equals(op) && result.startsWith("t") && !usedVars.contains(result)) {
+                quadruples.remove(i);
+                changed = true;
+            }
+            // 删除未使用的运算结果
+            else if (isArithmeticOp(op) && result.startsWith("t") && !usedVars.contains(result)) {
+                quadruples.remove(i);
+                changed = true;
+            }
+        }
+
+        return changed;
+    }
+
+    /**
+     * 跳转优化
+     */
+    private boolean jumpOptimization() {
+        boolean changed = false;
+
+        // 删除无用的跳转指令
+        for (int i = quadruples.size() - 1; i >= 0; i--) {
+            Quadruple quad = quadruples.get(i);
+            String op = quad.getOp();
+
+            // 删除跳转到下一条指令的无用跳转
+            if ("JMP".equals(op)) {
+                String targetLabel = quad.getResult();
+
+                // 查找目标标签
+                for (int j = i + 1; j < quadruples.size(); j++) {
+                    Quadruple nextQuad = quadruples.get(j);
+                    if ("LABEL".equals(nextQuad.getOp()) && targetLabel.equals(nextQuad.getArg1())) {
+                        // 如果紧接着就是目标标签，删除跳转
+                        quadruples.remove(i);
+                        changed = true;
+                        break;
+                    } else if (!"LABEL".equals(nextQuad.getOp())) {
+                        // 遇到非标签指令，停止查找
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 删除未使用的标签
+        java.util.Set<String> usedLabels = new java.util.HashSet<>();
+
+        // 收集所有被跳转引用的标签
+        for (Quadruple quad : quadruples) {
+            String op = quad.getOp();
+            if ("JMP".equals(op) || "JZ".equals(op) || "JNZ".equals(op)) {
+                String label = quad.getResult();
+                if (!label.isEmpty()) {
+                    usedLabels.add(label);
+                }
+            }
+        }
+
+        // 删除未使用的标签
+        for (int i = quadruples.size() - 1; i >= 0; i--) {
+            Quadruple quad = quadruples.get(i);
+            if ("LABEL".equals(quad.getOp())) {
+                String label = quad.getArg1();
+                if (!usedLabels.contains(label)) {
+                    quadruples.remove(i);
+                    changed = true;
+                }
+            }
+        }
+
+        return changed;
+    }
+
+    // ========== 辅助方法 ==========
+
+    /**
+     * 判断是否为常量
+     */
+    private boolean isConstant(String value) {
+        if (value == null || value.isEmpty()) return false;
+
+        // 数字常量
+        try {
+            Integer.parseInt(value);
+            return true;
+        } catch (NumberFormatException e1) {
+            try {
+                Double.parseDouble(value);
+                return true;
+            } catch (NumberFormatException e2) {
+                // 不是数字
+            }
+        }
+
+        // 布尔常量
+        return "true".equals(value) || "false".equals(value);
+    }
+
+    /**
+     * 判断是否为算术运算符
+     */
+    private boolean isArithmeticOp(String op) {
+        return "+".equals(op) || "-".equals(op) || "*".equals(op) || "/".equals(op) || "%".equals(op);
+    }
+
+    /**
+     * 判断是否为逻辑运算符
+     */
+    private boolean isLogicalOp(String op) {
+        return "&&".equals(op) || "||".equals(op) || "!".equals(op);
+    }
+
+
+
+    /**
+     * 计算常量表达式
+     */
+    private String evaluateConstantExpression(String op, String arg1, String arg2) {
+        try {
+            if (isArithmeticOp(op)) {
+                double val1 = Double.parseDouble(arg1);
+                double val2 = Double.parseDouble(arg2);
+                double result = 0;
+
+                switch (op) {
+                    case "+": result = val1 + val2; break;
+                    case "-": result = val1 - val2; break;
+                    case "*": result = val1 * val2; break;
+                    case "/":
+                        if (val2 == 0) return null; // 避免除零
+                        result = val1 / val2;
+                        break;
+                    case "%":
+                        if (val2 == 0) return null;
+                        result = val1 % val2;
+                        break;
+                }
+
+                // 如果结果是整数，返回整数格式
+                if (result == (int)result) {
+                    return String.valueOf((int)result);
+                } else {
+                    return String.valueOf(result);
+                }
+            }
+
+            if (isComparisonOp(op)) {
+                double val1 = Double.parseDouble(arg1);
+                double val2 = Double.parseDouble(arg2);
+                boolean result = false;
+
+                switch (op) {
+                    case "==": result = val1 == val2; break;
+                    case "!=": result = val1 != val2; break;
+                    case "<": result = val1 < val2; break;
+                    case "<=": result = val1 <= val2; break;
+                    case ">": result = val1 > val2; break;
+                    case ">=": result = val1 >= val2; break;
+                }
+
+                return String.valueOf(result);
+            }
+
+            if (isLogicalOp(op)) {
+                boolean val1 = Boolean.parseBoolean(arg1);
+                boolean val2 = Boolean.parseBoolean(arg2);
+                boolean result = false;
+
+                switch (op) {
+                    case "&&": result = val1 && val2; break;
+                    case "||": result = val1 || val2; break;
+                }
+
+                return String.valueOf(result);
+            }
+
+        } catch (NumberFormatException e) {
+            // 解析失败，返回null
+        }
+
+        return null;
+    }
+
 }

@@ -1,17 +1,22 @@
 package com.example.compliefx2;
 
-import com.example.compliefx2.syntaxAnalyzer.SyntaxAnalyzer;
-import javafx.event.ActionEvent;
-import javafx.fxml.FXML;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.MenuItem;
-import javafx.scene.control.TextArea;
-import javafx.stage.FileChooser;
-import javafx.stage.Window;
+        import com.example.compliefx2.intermediateCode.IntermediateCodeGenerator;
+        import com.example.compliefx2.intermediateCode.Quadruple;
+        import com.example.compliefx2.semanticAnalyzer.SemanticAnalyzer;
+        import com.example.compliefx2.syntaxAnalyzer.StatementParser;
+        import com.example.compliefx2.syntaxAnalyzer.SyntaxAnalyzer;
+        import javafx.event.ActionEvent;
+        import javafx.fxml.FXML;
+        import javafx.scene.control.Button;
+        import javafx.scene.control.Label;
+        import javafx.scene.control.MenuItem;
+        import javafx.scene.control.TextArea;
+        import javafx.stage.FileChooser;
+        import javafx.stage.Window;
 
-import java.io.*;
-import java.util.Map;
+        import java.io.*;
+        import java.util.List;
+        import java.util.Map;
 
 public class Text {
 
@@ -57,9 +62,11 @@ public class Text {
     // 读取Token映射表（路径需根据实际环境调整）
     Map<String, Integer> tokenMap = TokenLibrary.readToken("C:\\Users\\WYR\\Desktop\\编译原理\\compliefx2\\src\\main\\resources\\com\\example\\compliefx2\\tokenTable.json");
     ManualLexer lexer;
+    private IntermediateCodeGenerator intermediateCodeGenerator; // 保存中间代码生成器实例
 
     // 当前选中的语法分析类型（保留原有枚举用于界面交互）
     private SyntaxType currentSyntaxType = SyntaxType.STATEMENT;
+    ASTNode astNode;
 
     // 语法分析类型枚举
     public enum SyntaxType {
@@ -147,6 +154,31 @@ public class Text {
     @FXML
     void IntermediateCodeGenerate(ActionEvent event) {
         // 中间代码生成功能的实现
+        if (astNode == null) {
+            ErrorMsgPrint.setText("请先执行语法分析以生成AST");
+            return;
+        }
+
+        try {
+
+
+            intermediateCodeGenerator = new IntermediateCodeGenerator();
+            intermediateCodeGenerator.generateCode(astNode); // 生成中间代码
+            String originalCode = intermediateCodeGenerator.getQuadruplesAsString();
+
+//            intermediateCodeGenerator.optimize(); // 执行优化
+//            String optimizedCode = intermediateCodeGenerator.getQuadruplesAsString();
+
+//            // 显示原始代码和优化后的代码
+//            ResultPrint.setText("=== 原始中间代码 ===\n" + originalCode +
+//                    "\n=== 优化后代码 ===\n" + optimizedCode);
+            // 显示原始代码和优化后的代码
+            ResultPrint.setText("=== 原始中间代码 ===\n" + originalCode);
+            ErrorMsgPrint.setText("中间代码生成成功");
+        } catch (Exception e) {
+            e.printStackTrace();
+            ErrorMsgPrint.setText("中间代码生成错误: " + e.getMessage());
+        }
     }
 
     @FXML  // 语法分析器
@@ -163,46 +195,66 @@ public class Text {
         System.out.println("开始语法分析");
         try {
             SyntaxAnalyzer.AnalysisResult result = null;
+            StatementParser parser = new StatementParser(new StringReader(sourceCode), tokenMap);
+            boolean isValid = parser.parseProgram();
 
-            // 根据当前语法类型选择分析方法
-            switch (currentSyntaxType) {
-                case ARITHMETIC:
-                case BOOLEAN:
-                case ASSIGNMENT:
-                    // 使用统一表达式分析器
-                    result = SyntaxAnalyzer.analyzeUnifiedExpression(sourceCode, tokenMap);
-                    break;
-                case STATEMENT:
-                    // 使用完整程序结构分析器
-                    result = SyntaxAnalyzer.analyzeProgram(sourceCode, tokenMap);
-                    break;
-                default:
-                    ErrorMsgPrint.setText("未知的语法分析类型");
-                    return;
-            }
-
-            if (result != null) {
-                ResultPrint.setText(result.getParseTree());
-                if (result.isValid()) {
-                    ErrorMsgPrint.setText("语法分析成功");
-                } else {
-                    ErrorMsgPrint.setText(result.getErrorMsg());
+            if (isValid) {
+                astNode = parser.getAST();
+                if (astNode != null) {
+                    System.out.println("AST 结构：");
+                    ResultPrint.setText(astNode.toString());
+                    System.out.println(astNode.toString());
                 }
-            } else {
-                ErrorMsgPrint.setText("语法分析结果为空");
+
+                System.out.println("语法分析结束");
+                System.out.println("语法分析通过，开始语义分析...");
+
+                // Step 2: 语义分析
+                SemanticAnalyzer semanticAnalyzer = new SemanticAnalyzer();
+                boolean semanticValid = semanticAnalyzer.analyze(astNode);
+
+                // Step 3: 输出结果
+                semanticAnalyzer.printAnalysisResult();
+
+                if (semanticValid) {
+                    System.out.println("✓ 语义分析通过");
+                } else {
+                    System.out.println("✗ 语义分析发现错误");
+                }
+
+            }else{
+                System.out.println("语法分析失败");
+                ErrorMsgPrint.setText("语法分析出错: " + parser.getErrorMsg());
             }
-
-            System.out.println("语法分析结束");
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            ErrorMsgPrint.setText("语法分析出错: " + e.getMessage());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
-    @FXML
+        @FXML
     void TargetCodeGenerate(ActionEvent event) {
         // 目标代码生成功能的实现
+            if (intermediateCodeGenerator == null) {
+                ErrorMsgPrint.setText("请先生成中间代码");
+                return;
+            }
+
+            try {
+                // 获取优化后的四元式
+                List<Quadruple> optimizedQuads = intermediateCodeGenerator.getQuadruples();
+
+                // 生成目标代码
+                CodeGenerator codeGen = new CodeGenerator();
+                codeGen.setQuadruples(optimizedQuads);
+                String assemblyCode = codeGen.generateAssembly();
+
+                // 显示汇编代码
+                ResultPrint.setText("=== 8086汇编代码 ===\n" + assemblyCode);
+                ErrorMsgPrint.setText("目标代码生成成功");
+            } catch (Exception e) {
+                e.printStackTrace();
+                ErrorMsgPrint.setText("目标代码生成错误: " + e.getMessage());
+            }
     }
 
     // 设置当前语法分析类型

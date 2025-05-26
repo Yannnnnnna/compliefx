@@ -8,4 +8,6 @@ module com.example.compliefx2 {
 
     opens com.example.compliefx2 to javafx.fxml;
     exports com.example.compliefx2;
+    exports com.example.compliefx2.intermediateCode;
+    opens com.example.compliefx2.intermediateCode to javafx.fxml;
 }

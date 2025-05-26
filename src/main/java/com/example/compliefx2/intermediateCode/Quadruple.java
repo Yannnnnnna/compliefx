@@ -33,6 +33,10 @@ public class Quadruple {
         return result;
     }
 
+    public void setOp(String op) {
+        this.op = op;
+    }
+
     // Setter方法（用于回填）
     public void setArg1(String arg1) {
         this.arg1 = arg1;
