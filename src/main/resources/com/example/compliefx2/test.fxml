@@ -43,22 +43,17 @@
             <Font size="14.0" />
          </font>
       </Button>
-      <Button fx:id="TargetCode" layoutX="324.0" layoutY="3.0" mnemonicParsing="false" onAction="#TargetCodeGenerate" style="-fx-background-color: transparent;" text="目标代码" textAlignment="CENTER">
+      <Button fx:id="TargetCode" layoutX="486.0" layoutY="3.0" mnemonicParsing="false" onAction="#TargetCodeGenerate" style="-fx-background-color: transparent;" text="目标代码" textAlignment="CENTER">
          <font>
             <Font size="14.0" />
          </font>
       </Button>
-      <Button fx:id="IntermediateCode" layoutX="255.0" layoutY="3.0" mnemonicParsing="false" onAction="#IntermediateCodeGenerate" style="-fx-background-color: transparent;" text="中间代码" textAlignment="CENTER">
+      <Button fx:id="IntermediateCode" layoutX="334.0" layoutY="3.0" mnemonicParsing="false" onAction="#IntermediateCodeGenerate" style="-fx-background-color: transparent;" text="中间代码" textAlignment="CENTER">
          <font>
             <Font size="14.0" />
          </font>
       </Button>
-      <Button fx:id="Check" layoutX="400.0" layoutY="3.0" mnemonicParsing="false" style="-fx-background-color: transparent;" text="查看" textAlignment="CENTER">
-         <font>
-            <Font size="14.0" />
-         </font>
-      </Button>
-      <Button fx:id="Help" layoutX="446.0" layoutY="3.0" mnemonicParsing="false" style="-fx-background-color: transparent;" text="帮助" textAlignment="CENTER">
+      <Button fx:id="CodeOptimization" layoutX="410.0" layoutY="3.0" mnemonicParsing="false" onAction="#CodeOptimizationGenerate" prefHeight="29.0" prefWidth="76.0" style="-fx-background-color: transparent;" text="代码优化" textAlignment="CENTER">
          <font>
             <Font size="14.0" />
          </font>
@@ -72,5 +67,10 @@
             <Font size="14.0" />
          </font>
       </MenuButton>
+      <Button fx:id="SemanticAnalyzer" layoutX="262.0" layoutY="3.0" mnemonicParsing="false" onAction="#SemanticAnalyzerGenerate" style="-fx-background-color: transparent;" text="语义分析" textAlignment="CENTER">
+         <font>
+            <Font size="14.0" />
+         </font>
+      </Button>
    </children>
 </AnchorPane>

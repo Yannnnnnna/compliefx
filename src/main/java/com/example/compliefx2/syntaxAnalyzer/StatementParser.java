@@ -37,6 +37,7 @@ public class StatementParser extends UnifiedExpressionParser {
     private int TOKEN_VOID;   // void
     private int TOKEN_CHAR;   // char
     private int TOKEN_STRING; // string
+    private int TOKEN_BOOL;   // boolean
 
     // 语句相关Token
     private int TOKEN_IF;     // if
@@ -90,6 +91,7 @@ public class StatementParser extends UnifiedExpressionParser {
         TOKEN_VOID = tokenMap.getOrDefault("void", 107);
         TOKEN_CHAR = tokenMap.getOrDefault("char", 101);
         TOKEN_STRING = tokenMap.getOrDefault("string", 114);
+        TOKEN_BOOL = tokenMap.getOrDefault("bool", 117);
 
         // 语句关键字
         TOKEN_IF = tokenMap.getOrDefault("if", 111);
@@ -120,12 +122,7 @@ public class StatementParser extends UnifiedExpressionParser {
                 return false;
             }
 
-            // 生成中间代码
-            if (getErrorMsg().isEmpty()) {
-                System.out.println("\n=== 开始生成中间代码 ===");
-                codeGenerator.generateCode(currentAST);
-                System.out.println("=== 中间代码生成完成 ===");
-            }
+
 
             return getErrorMsg().isEmpty();
         } catch (Exception e) {
@@ -164,26 +161,26 @@ public class StatementParser extends UnifiedExpressionParser {
      */
     private boolean isTypeSpecifier() {
         return match(TOKEN_INT) || match(TOKEN_FLOAT) || match(TOKEN_VOID) ||
-                match(TOKEN_CHAR) || match(TOKEN_STRING);
+                match(TOKEN_CHAR) || match(TOKEN_STRING) || match(TOKEN_BOOL);
     }
 
     /**
      * 解析类型说明符
-     * 类型说明符 → int | float | void | char | string
+     * 类型说明符 → int | float | void | char | string |bool
      * @throws IOException 如果IO操作失败
      */
     private String parseTypeSpecifier() throws IOException {
         indentLevel++;
         try {
             if (match(TOKEN_INT) || match(TOKEN_FLOAT) || match(TOKEN_VOID) ||
-                    match(TOKEN_CHAR) || match(TOKEN_STRING)) {
+                    match(TOKEN_CHAR) || match(TOKEN_STRING) || match(TOKEN_BOOL)) {
                 String type = currentToken.value;
                 addToParseTree("类型说明符 → " + type);
                 addToParseTree("匹配类型说明符: " + type);
                 advance();
                 return type;
             } else {
-                error("期望类型说明符 (int, float, void, char, string)");
+                error("期望类型说明符 (int, float, void, char, string, bool)");
                 return null;
             }
         } finally {
@@ -380,7 +377,7 @@ public class StatementParser extends UnifiedExpressionParser {
                 match(TOKEN_TRUE) || match(TOKEN_FALSE) || match(TOKEN_LBRACE) ||
                 match(TOKEN_IF) || match(TOKEN_WHILE) || match(TOKEN_FOR) || match(TOKEN_RETURN) ||
                 match(TOKEN_INT) || match(TOKEN_FLOAT) || match(TOKEN_VOID) || match(TOKEN_CHAR) || match(TOKEN_STRING) ||
-                match(TOKEN_SEMICOLON); // 空语句也是有效的语句开始
+                match(TOKEN_SEMICOLON) || match(TOKEN_BOOL); // 空语句也是有效的语句开始
     }
 
     /**
@@ -404,7 +401,7 @@ public class StatementParser extends UnifiedExpressionParser {
                 addToParseTree("语句 → for语句");
                 return parseForStatement();
             } else if (match(TOKEN_INT) || match(TOKEN_FLOAT) || match(TOKEN_VOID) ||
-                    match(TOKEN_CHAR) || match(TOKEN_STRING)) {
+                    match(TOKEN_CHAR) || match(TOKEN_STRING) || match(TOKEN_BOOL)) {
                 addToParseTree("语句 → 声明语句");
                 return parseDeclaration();
             } else {

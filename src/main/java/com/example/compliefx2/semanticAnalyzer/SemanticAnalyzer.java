@@ -456,42 +456,49 @@ public class SemanticAnalyzer implements ASTNode.ASTVisitor<Void> {
     }
 
     /**
-     * 打印分析结果（修改后的版本）
+     * 获取分析结果字符串（新增方法）
      */
-    public void printAnalysisResult() {
-        System.out.println("\n======= 语义分析结果 =======");
+    public String getAnalysisResult() {
+        StringBuilder result = new StringBuilder();
+
+        result.append("======= 语义分析结果 =======\n\n");
 
         if (hasErrors) {
-            System.out.println("发现语义错误:");
+            result.append("发现语义错误:\n");
             for (SemanticError error : errors) {
-                System.out.println("  " + error);
+                result.append("  ").append(error.toString()).append("\n");
             }
         } else {
-            System.out.println("语义分析通过，未发现错误。");
+            result.append("语义分析通过，未发现错误。\n");
         }
 
-        // 打印符号表
-        printSymbolTable();
+        // 添加符号表信息
+        result.append("\n").append(getSymbolTableString());
 
-        System.out.println("语义分析完成。");
+        result.append("\n语义分析完成。");
+
+        return result.toString();
     }
-    // 在SemanticAnalyzer类中添加以下方法
 
     /**
-     * 打印符号表（按照图片格式）
+     * 打印分析结果（保留原有方法，用于控制台输出）
      */
+    public void printAnalysisResult() {
+        System.out.println(getAnalysisResult());
+    }
+
     /**
-     * 打印符号表（修复后的版本）
+     * 获取符号表字符串（新增方法）
      */
-    public void printSymbolTable() {
-        System.out.println("\n======= 符号表Symbol Table =======");
+    public String getSymbolTableString() {
+        StringBuilder result = new StringBuilder();
+        result.append("======= 符号表Symbol Table =======\n");
 
         // 收集所有符号
         List<Symbol> allSymbols = collectAllSymbols();
-
         if (allSymbols.isEmpty()) {
-            System.out.println("符号表为空");
-            return;
+            result.append("符号表为空\n");
+            return result.toString();
         }
 
         // 分类符号
@@ -502,8 +509,7 @@ public class SemanticAnalyzer implements ASTNode.ASTVisitor<Void> {
         for (Symbol symbol : allSymbols) {
             if (symbol.isFunction()) {
                 functions.add(symbol);
-            } else if (symbol.getType().startsWith("const") ||
-                    symbol.getName().toUpperCase().equals(symbol.getName())) {
+            } else if (symbol.getType().startsWith("const") || symbol.getName().toUpperCase().equals(symbol.getName())) {
                 // 改进常量判断：类型以const开头或变量名全大写
                 constants.add(symbol);
             } else {
@@ -511,71 +517,68 @@ public class SemanticAnalyzer implements ASTNode.ASTVisitor<Void> {
             }
         }
 
-        // 打印变量表
+        // 生成变量表
         if (!variables.isEmpty()) {
-            System.out.println("\n变量表:");
-            System.out.println("┌────────┬────────┬────────┬────────┬────────┐");
-            System.out.println("│   名   │   类   │  作用  │   值   │  长度  │");
-            System.out.println("│   字   │   型   │   域   │        │        │");
-            System.out.println("├────────┼────────┼────────┼────────┼────────┤");
-
+            result.append("\n变量表:\n");
+            result.append("\t名字\t\t类型\t\t作用域\t\t值\t\t长度\t\t\n");
             for (Symbol symbol : variables) {
-                System.out.printf("│ %-6s │ %-6s │ /%d/%-3d │ %-6s │ %-6s │%n",
+                result.append(String.format("\t%s\t\t%s\t\t/%d/%d\t\t%s\t\t%s\t\t\n",
                         truncate(symbol.getName(), 6),
                         truncate(symbol.getType(), 6),
                         0, // 作用域开始
                         symbol.getScope(), // 作用域结束
                         symbol.isInitialized() ? "已初始化" : "未初始化",
-                        getTypeLength(symbol.getType()));
+                        getTypeLength(symbol.getType())));
             }
-            System.out.println("└────────┴────────┴────────┴────────┴────────┘");
+            result.append("\n");
         }
 
-        // 打印常量表
+        // 生成常量表
         if (!constants.isEmpty()) {
-            System.out.println("\n常量表:");
-            System.out.println("┌────────┬────────┬────────┐");
-            System.out.println("│  名字  │   值   │  类型  │");
-            System.out.println("├────────┼────────┼────────┤");
-
+            result.append("\n常量表:\n");
+            result.append("\t名字\t\t值\t\t类型\t\t\n");
             for (Symbol symbol : constants) {
-                System.out.printf("│ %-6s │ %-6s │ %-6s │%n",
+                result.append(String.format("\t%s\t\t%s\t\t%s\t\t\n",
                         truncate(symbol.getName(), 6),
                         "***", // 常量值暂用***表示
-                        truncate(symbol.getType(), 6));
+                        truncate(symbol.getType(), 6)));
             }
-            System.out.println("└────────┴────────┴────────┘");
+            result.append("\n");
         }
 
-        // 打印函数表
+        // 生成函数表
         if (!functions.isEmpty()) {
-            System.out.println("\n函数表:");
-            System.out.println("┌────────┬────────┬────────┬──────────────┐");
-            System.out.println("│   名   │ 返回   │ 参数   │   参数类型   │");
-            System.out.println("│   字   │ 类型   │ 个数   │              │");
-            System.out.println("├────────┼────────┼────────┼──────────────┤");
-
+            result.append("\n函数表:\n");
+            result.append("\t名字\t\t返回类型\t\t参数个数\t\t参数类型\t\t\n");
             for (Symbol symbol : functions) {
                 String paramTypes = String.join(",", symbol.getParamTypes());
                 if (paramTypes.length() > 12) {
                     paramTypes = paramTypes.substring(0, 9) + "...";
                 }
-
-                System.out.printf("│ %-6s │ %-6s │ %-6d │ %-12s │%n",
+                result.append(String.format("\t%s\t\t%s\t\t%d\t\t%s\t\t\n",
                         truncate(symbol.getName(), 6),
                         truncate(symbol.getType(), 6),
                         symbol.getParamTypes().size(),
-                        paramTypes.isEmpty() ? "无" : paramTypes);
+                        paramTypes.isEmpty() ? "无" : paramTypes));
             }
-            System.out.println("└────────┴────────┴────────┴──────────────┘");
+            result.append("\n");
         }
 
-        // 打印符号统计信息
-        System.out.println("\n符号统计:");
-        System.out.println("变量数量: " + variables.size());
-        System.out.println("常量数量: " + constants.size());
-        System.out.println("函数数量: " + functions.size());
-        System.out.println("总符号数: " + allSymbols.size());
+        // 添加符号统计信息
+        result.append("\n符号统计:\n");
+        result.append("变量数量: ").append(variables.size()).append("\n");
+        result.append("常量数量: ").append(constants.size()).append("\n");
+        result.append("函数数量: ").append(functions.size()).append("\n");
+        result.append("总符号数: ").append(allSymbols.size()).append("\n");
+
+        return result.toString();
+    }
+
+    /**
+     * 打印符号表（保留原有方法，用于控制台输出）
+     */
+    public void printSymbolTable() {
+        System.out.println(getSymbolTableString());
     }
 
     /**
@@ -584,7 +587,6 @@ public class SemanticAnalyzer implements ASTNode.ASTVisitor<Void> {
     private List<Symbol> collectAllSymbols() {
         return symbolTable.getAllSymbols();
     }
-
 
     /**
      * 截断字符串到指定长度

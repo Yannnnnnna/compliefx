@@ -44,7 +44,7 @@ public class ManualLexer {
     //关键字列表
     private static final String[] KEYWORDS = {
             "char", "int", "float", "break", "const", "return", "void",
-            "continue", "do", "while", "if", "else", "for", "string","true","false"
+            "continue", "do", "while", "if", "else", "for", "string","true","false", "bool"
     };
 
     // 复合操作符列表

@@ -1,0 +1,15 @@
+void main() {
+            int i;
+            int j;
+            int sum;
+            i = 1;
+            sum = 0;
+            while (i <= 10) {
+                j = 1;
+                while (j <= i) {
+                    sum = sum + j;
+                    j = j + 1;
+                }
+                i = i + 1;
+            }
+        }

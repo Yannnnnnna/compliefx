@@ -1,35 +1,28 @@
 package com.example.compliefx2.intermediateCode;
 
-import com.example.compliefx2.ASTNode;
 import com.example.compliefx2.intermediateCode.IntermediateCodeGenerator;
 
 /**
- * 中间代码生成与优化测试用例
+ * 中间代码优化测试用例
  */
 public class OptimizationTestCases {
 
     /**
-     * 测试用例1：常量折叠
-     * 源代码: int a = 3 + 5; int b = 10 * 2; int c = 20 / 4;
+     * 测试常量折叠优化
      */
     public static void testConstantFolding() {
-        System.out.println("=== 测试用例1：常量折叠 ===");
+        System.out.println("=== 测试常量折叠优化 ===");
 
         IntermediateCodeGenerator generator = new IntermediateCodeGenerator();
 
-        // 手动构建AST并生成中间代码（模拟）
-        // 这里直接添加四元式来模拟生成的中间代码
-        generator.emit("+", "3", "5", "t1");           // t1 = 3 + 5
-        generator.emit("DECLARE", "int", "", "a");     // declare int a
-        generator.emit("=", "t1", "", "a");            // a = t1
-
-        generator.emit("*", "10", "2", "t2");          // t2 = 10 * 2
-        generator.emit("DECLARE", "int", "", "b");     // declare int b
-        generator.emit("=", "t2", "", "b");            // b = t2
-
-        generator.emit("/", "20", "4", "t3");          // t3 = 20 / 4
-        generator.emit("DECLARE", "int", "", "c");     // declare int c
-        generator.emit("=", "t3", "", "c");            // c = t3
+        // 生成测试四元式
+        generator.emit("+", "3", "5", "t0");        // t0 = 3 + 5
+        generator.emit("*", "4", "6", "t1");        // t1 = 4 * 6
+        generator.emit("-", "10", "3", "t2");       // t2 = 10 - 3
+        generator.emit("/", "20", "4", "t3");       // t3 = 20 / 4
+        generator.emit("==", "5", "5", "t4");       // t4 = 5 == 5
+        generator.emit("!=", "3", "7", "t5");       // t5 = 3 != 7
+        generator.emit("<", "2", "8", "t6");        // t6 = 2 < 8
 
         System.out.println("优化前:");
         generator.printQuadruples();
@@ -38,28 +31,25 @@ public class OptimizationTestCases {
 
         System.out.println("\n优化后:");
         generator.printQuadruples();
-        System.out.println();
+
+        System.out.println("期望结果: 所有运算应该被计算为常量值\n");
     }
 
     /**
-     * 测试用例2：常量传播
-     * 源代码: int x = 5; int y = x + 3; int z = y * 2;
+     * 测试常量传播优化
      */
     public static void testConstantPropagation() {
-        System.out.println("=== 测试用例2：常量传播 ===");
+        System.out.println("=== 测试常量传播优化 ===");
 
         IntermediateCodeGenerator generator = new IntermediateCodeGenerator();
 
-        generator.emit("DECLARE", "int", "", "x");     // declare int x
-        generator.emit("=", "5", "", "x");             // x = 5
-
-        generator.emit("DECLARE", "int", "", "y");     // declare int y
-        generator.emit("+", "x", "3", "t1");           // t1 = x + 3
-        generator.emit("=", "t1", "", "y");            // y = t1
-
-        generator.emit("DECLARE", "int", "", "z");     // declare int z
-        generator.emit("*", "y", "2", "t2");           // t2 = y * 2
-        generator.emit("=", "t2", "", "z");            // z = t2
+        // 生成测试四元式
+        generator.emit("=", "10", "", "a");         // a = 10
+        generator.emit("=", "20", "", "b");         // b = 20
+        generator.emit("+", "a", "b", "t0");        // t0 = a + b
+        generator.emit("*", "a", "3", "t1");        // t1 = a * 3
+        generator.emit("-", "b", "5", "t2");        // t2 = b - 5
+        generator.emit("=", "a", "", "c");          // c = a
 
         System.out.println("优化前:");
         generator.printQuadruples();
@@ -68,36 +58,29 @@ public class OptimizationTestCases {
 
         System.out.println("\n优化后:");
         generator.printQuadruples();
-        System.out.println();
+
+        System.out.println("期望结果: a和b的值应该被传播，并进行常量折叠\n");
     }
 
     /**
-     * 测试用例3：代数化简
-     * 源代码: int a = x + 0; int b = y * 1; int c = z * 0; int d = w - 0;
+     * 测试代数化简优化
      */
     public static void testAlgebraicSimplification() {
-        System.out.println("=== 测试用例3：代数化简 ===");
+        System.out.println("=== 测试代数化简优化 ===");
 
         IntermediateCodeGenerator generator = new IntermediateCodeGenerator();
 
-        generator.emit("DECLARE", "int", "", "x");     // declare int x
-        generator.emit("=", "10", "", "x");            // x = 10
-
-        generator.emit("+", "x", "0", "t1");           // t1 = x + 0
-        generator.emit("DECLARE", "int", "", "a");     // declare int a
-        generator.emit("=", "t1", "", "a");            // a = t1
-
-        generator.emit("*", "x", "1", "t2");           // t2 = x * 1
-        generator.emit("DECLARE", "int", "", "b");     // declare int b
-        generator.emit("=", "t2", "", "b");            // b = t2
-
-        generator.emit("*", "x", "0", "t3");           // t3 = x * 0
-        generator.emit("DECLARE", "int", "", "c");     // declare int c
-        generator.emit("=", "t3", "", "c");            // c = t3
-
-        generator.emit("-", "x", "0", "t4");           // t4 = x - 0
-        generator.emit("DECLARE", "int", "", "d");     // declare int d
-        generator.emit("=", "t4", "", "d");            // d = t4
+        // 生成测试四元式
+        generator.emit("+", "x", "0", "t0");        // t0 = x + 0
+        generator.emit("+", "0", "y", "t1");        // t1 = 0 + y
+        generator.emit("-", "z", "0", "t2");        // t2 = z - 0
+        generator.emit("-", "a", "a", "t3");        // t3 = a - a
+        generator.emit("*", "b", "1", "t4");        // t4 = b * 1
+        generator.emit("*", "1", "c", "t5");        // t5 = 1 * c
+        generator.emit("*", "d", "0", "t6");        // t6 = d * 0
+        generator.emit("*", "0", "e", "t7");        // t7 = 0 * e
+        generator.emit("/", "f", "1", "t8");        // t8 = f / 1
+        generator.emit("/", "0", "g", "t9");        // t9 = 0 / g
 
         System.out.println("优化前:");
         generator.printQuadruples();
@@ -106,114 +89,27 @@ public class OptimizationTestCases {
 
         System.out.println("\n优化后:");
         generator.printQuadruples();
-        System.out.println();
+
+        System.out.println("期望结果: 应该进行代数化简，如 x+0=x, x*1=x, x*0=0 等\n");
     }
 
     /**
-     * 测试用例4：死代码消除
-     * 源代码: int x = 5; int y = x + 3; int z = 10; // z未使用
-     */
-    public static void testDeadCodeElimination() {
-        System.out.println("=== 测试用例4：死代码消除 ===");
-
-        IntermediateCodeGenerator generator = new IntermediateCodeGenerator();
-
-        generator.emit("DECLARE", "int", "", "x");     // declare int x
-        generator.emit("=", "5", "", "x");             // x = 5
-
-        generator.emit("DECLARE", "int", "", "y");     // declare int y
-        generator.emit("+", "x", "3", "t1");           // t1 = x + 3
-        generator.emit("=", "t1", "", "y");            // y = t1
-
-        // 未使用的变量和临时变量
-        generator.emit("DECLARE", "int", "", "z");     // declare int z (未使用)
-        generator.emit("=", "10", "", "z");            // z = 10 (未使用)
-        generator.emit("+", "20", "30", "t2");         // t2 = 20 + 30 (未使用)
-
-        // 使用y，所以y不会被删除
-        generator.emit("=", "y", "", "result");        // result = y
-
-        System.out.println("优化前:");
-        generator.printQuadruples();
-
-        generator.optimize();
-
-        System.out.println("\n优化后:");
-        generator.printQuadruples();
-        System.out.println();
-    }
-
-    /**
-     * 测试用例5：跳转优化
-     * 源代码: if (x > 0) { y = 1; } else { y = 0; }
-     */
-    public static void testJumpOptimization() {
-        System.out.println("=== 测试用例5：跳转优化 ===");
-
-        IntermediateCodeGenerator generator = new IntermediateCodeGenerator();
-
-        generator.emit("DECLARE", "int", "", "x");     // declare int x
-        generator.emit("=", "5", "", "x");             // x = 5
-        generator.emit("DECLARE", "int", "", "y");     // declare int y
-
-        // 条件判断
-        generator.emit(">", "x", "0", "t1");           // t1 = x > 0
-        generator.emit("JZ", "t1", "", "L1");          // if t1 == 0 goto L1
-
-        // then 分支
-        generator.emit("=", "1", "", "y");             // y = 1
-        generator.emit("JMP", "", "", "L2");           // goto L2
-
-        // else 分支
-        generator.emit("LABEL", "L1", "", "");         // L1:
-        generator.emit("=", "0", "", "y");             // y = 0
-
-        // 结束标签
-        generator.emit("LABEL", "L2", "", "");         // L2:
-
-        // 添加一些无用的跳转和标签
-        generator.emit("JMP", "", "", "L3");           // goto L3
-        generator.emit("LABEL", "L3", "", "");         // L3: (紧接着跳转目标)
-        generator.emit("LABEL", "L4", "", "");         // L4: (未使用的标签)
-
-        System.out.println("优化前:");
-        generator.printQuadruples();
-
-        generator.optimize();
-
-        System.out.println("\n优化后:");
-        generator.printQuadruples();
-        System.out.println();
-    }
-
-    /**
-     * 测试用例6：综合优化
-     * 包含多种优化机会的复杂测试
+     * 测试综合优化
      */
     public static void testComprehensiveOptimization() {
-        System.out.println("=== 测试用例6：综合优化 ===");
+        System.out.println("=== 测试综合优化 ===");
 
         IntermediateCodeGenerator generator = new IntermediateCodeGenerator();
 
-        // 常量折叠 + 代数化简
-        generator.emit("+", "3", "5", "t1");           // t1 = 3 + 5 (常量折叠)
-        generator.emit("*", "t1", "1", "t2");          // t2 = t1 * 1 (代数化简)
-        generator.emit("+", "t2", "0", "t3");          // t3 = t2 + 0 (代数化简)
-
-        // 常量传播
-        generator.emit("DECLARE", "int", "", "a");     // declare int a
-        generator.emit("=", "t3", "", "a");            // a = t3
-        generator.emit("+", "a", "2", "t4");           // t4 = a + 2 (常量传播后变成 8 + 2)
-
-        // 死代码
-        generator.emit("*", "10", "20", "t5");         // t5 = 10 * 20 (未使用，死代码)
-
-        // 逻辑运算化简
-        generator.emit("&&", "true", "a", "t6");       // t6 = true && a (代数化简)
-        generator.emit("||", "false", "t6", "t7");     // t7 = false || t6 (代数化简)
-
-        generator.emit("DECLARE", "int", "", "result");
-        generator.emit("=", "t7", "", "result");       // result = t7
+        // 生成复杂的测试四元式
+        generator.emit("=", "5", "", "a");          // a = 5
+        generator.emit("=", "3", "", "b");          // b = 3
+        generator.emit("+", "a", "0", "t0");        // t0 = a + 0  (应化简为 a)
+        generator.emit("*", "b", "1", "t1");        // t1 = b * 1  (应化简为 b)
+        generator.emit("+", "t0", "t1", "t2");      // t2 = t0 + t1 (应传播为 a + b)
+        generator.emit("*", "2", "4", "t3");        // t3 = 2 * 4  (应折叠为 8)
+        generator.emit("-", "t2", "t3", "t4");      // t4 = t2 - t3
+        generator.emit("/", "t4", "1", "t5");       // t5 = t4 / 1 (应化简为 t4)
 
         System.out.println("优化前:");
         generator.printQuadruples();
@@ -222,37 +118,29 @@ public class OptimizationTestCases {
 
         System.out.println("\n优化后:");
         generator.printQuadruples();
-        System.out.println();
+
+        System.out.println("期望结果: 综合应用所有优化技术\n");
     }
 
     /**
-     * 测试用例7：while循环优化
+     * 测试边界情况
      */
-    public static void testWhileLoopOptimization() {
-        System.out.println("=== 测试用例7：while循环优化 ===");
+    public static void testEdgeCases() {
+        System.out.println("=== 测试边界情况 ===");
 
         IntermediateCodeGenerator generator = new IntermediateCodeGenerator();
 
-        generator.emit("DECLARE", "int", "", "i");     // declare int i
-        generator.emit("=", "0", "", "i");             // i = 0
-        generator.emit("DECLARE", "int", "", "sum");   // declare int sum
-        generator.emit("=", "0", "", "sum");           // sum = 0
+        // 除零情况
+        generator.emit("/", "10", "0", "t0");       // t0 = 10 / 0 (不应优化)
+        generator.emit("%", "5", "0", "t1");        // t1 = 5 % 0  (不应优化)
 
-        // while (i < 5) { sum = sum + i * 1; i = i + 1; }
-        generator.emit("LABEL", "L1", "", "");         // L1: 循环开始
-        generator.emit("<", "i", "5", "t1");           // t1 = i < 5
-        generator.emit("JZ", "t1", "", "L2");          // if t1 == 0 goto L2
+        // 浮点数计算
+        generator.emit("+", "3.14", "2.86", "t2");  // t2 = 3.14 + 2.86
+        generator.emit("*", "1.5", "2.0", "t3");    // t3 = 1.5 * 2.0
 
-        // 循环体 - 包含可优化的表达式
-        generator.emit("*", "i", "1", "t2");           // t2 = i * 1 (代数化简)
-        generator.emit("+", "sum", "t2", "t3");        // t3 = sum + t2
-        generator.emit("=", "t3", "", "sum");          // sum = t3
-
-        generator.emit("+", "i", "1", "t4");           // t4 = i + 1
-        generator.emit("=", "t4", "", "i");            // i = t4
-
-        generator.emit("JMP", "", "", "L1");           // goto L1
-        generator.emit("LABEL", "L2", "", "");         // L2: 循环结束
+        // 字符串常量
+        generator.emit("=", "hello", "", "s1");     // s1 = "hello"
+        generator.emit("=", "s1", "", "s2");        // s2 = s1
 
         System.out.println("优化前:");
         generator.printQuadruples();
@@ -261,26 +149,61 @@ public class OptimizationTestCases {
 
         System.out.println("\n优化后:");
         generator.printQuadruples();
-        System.out.println();
+
+        System.out.println("期望结果: 除零不优化，浮点数正确计算，字符串常量传播\n");
     }
 
     /**
-     * 运行所有测试用例
+     * 测试布尔表达式优化
+     */
+    public static void testBooleanOptimization() {
+        System.out.println("=== 测试布尔表达式优化 ===");
+
+        IntermediateCodeGenerator generator = new IntermediateCodeGenerator();
+
+        // 布尔常量
+        generator.emit("=", "true", "", "bool1");   // bool1 = true
+        generator.emit("=", "false", "", "bool2");  // bool2 = false
+
+        // 比较运算
+        generator.emit("==", "true", "true", "t0"); // t0 = true == true
+        generator.emit("!=", "false", "true", "t1");// t1 = false != true
+        generator.emit("<", "1", "2", "t2");        // t2 = 1 < 2
+        generator.emit(">=", "5", "3", "t3");       // t3 = 5 >= 3
+
+        // 使用布尔变量
+        generator.emit("==", "bool1", "true", "t4");// t4 = bool1 == true
+
+        System.out.println("优化前:");
+        generator.printQuadruples();
+
+        generator.optimize();
+
+        System.out.println("\n优化后:");
+        generator.printQuadruples();
+
+        System.out.println("期望结果: 布尔常量应该被正确传播和计算\n");
+    }
+
+    /**
+     * 运行所有测试
      */
     public static void runAllTests() {
-        System.out.println("开始运行中间代码优化测试用例...\n");
+        System.out.println("开始运行代码优化测试用例...\n");
 
         testConstantFolding();
         testConstantPropagation();
         testAlgebraicSimplification();
-        testDeadCodeElimination();
-        testJumpOptimization();
         testComprehensiveOptimization();
-        testWhileLoopOptimization();
+        testEdgeCases();
+        testBooleanOptimization();
 
-        System.out.println("所有测试用例运行完成！");
+        System.out.println("所有测试用例执行完毕！");
     }
 
+    /**
+     * 主方法
+     */
     public static void main(String[] args) {
         runAllTests();
     }

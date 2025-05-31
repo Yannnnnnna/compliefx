@@ -9,7 +9,7 @@ import java.util.*;
 
 /**
  * 目标代码生成器 - 将四元式转换为8086汇编代码
- * 增强版本，支持程序执行结果的输出显示
+ * 修改版本：整数运算结果为浮点数时忽略小数部分
  */
 public class CodeGenerator {
     private List<Quadruple> quadruples;                      // 四元式列表
@@ -92,7 +92,18 @@ public class CodeGenerator {
      */
     private boolean isImmediate(String operand) {
         if (operand == null) return false;
-        return operand.matches("-?\\d+") || operand.equals("true") || operand.equals("false");
+        return operand.matches("-?\\d+") ||
+                operand.matches("-?\\d+\\.\\d+") ||
+                operand.equals("true") ||
+                operand.equals("false");
+    }
+
+    /**
+     * 判断是否为浮点数
+     */
+    private boolean isFloatingPoint(String operand) {
+        if (operand == null) return false;
+        return operand.matches("-?\\d+\\.\\d+");
     }
 
     /**
@@ -165,11 +176,7 @@ public class CodeGenerator {
             String varType = entry.getValue();
             String safeVarName = getSafeVariableName(varName);
 
-            if ("int".equals(varType)) {
-                dataSection.add("    " + safeVarName + " DW 0    ; " + varType + " variable (" + varName + ")");
-            } else {
-                dataSection.add("    " + safeVarName + " DW 0    ; " + varType + " variable (" + varName + ")");
-            }
+            dataSection.add("    " + safeVarName + " DW 0    ; " + varType + " variable (" + varName + ")");
         }
 
         // 声明临时变量
@@ -188,7 +195,6 @@ public class CodeGenerator {
         dataSection.add("    msg_equals DB ' = ', '$'");
         dataSection.add("    msg_newline DB 0Dh, 0Ah, '$'");
         dataSection.add("    msg_press_key DB 'Press any key to exit...', '$'");
-        dataSection.add("    number_buffer DB 8 DUP(0), '$'    ; 数字转字符串缓冲区");
 
         dataSection.add(".STACK 100h");
     }
@@ -277,7 +283,7 @@ public class CodeGenerator {
         codeSection.add("    INT 21h");
         codeSection.add("");
 
-        // 输出变量名（简化版本，直接输出固定字符）
+        // 输出变量名
         codeSection.add("    ; 输出变量名 '" + varName + "'");
         for (char c : varName.toCharArray()) {
             codeSection.add("    MOV DL, '" + c + "'");
@@ -454,11 +460,12 @@ public class CodeGenerator {
      * 处理函数结束
      */
     private void handleEndFunction(String funcName) {
-        // 函数结束通常不需要特殊处理，因为我们在程序末尾统一处理结束
+        // 函数结束通常不需要特殊处理
     }
 
+
     /**
-     * 处理赋值操作
+     * 处理赋值操作 - 修改版本：正确处理布尔值和浮点数
      */
     private void handleAssignment(String source, String destination) {
         String safeSource = getSafeVariableName(source);
@@ -467,11 +474,16 @@ public class CodeGenerator {
         codeSection.add("    ; " + destination + " = " + source);
 
         if (isImmediate(source)) {
-            // 立即数赋值
-            String value = convertImmediate(source);
-            codeSection.add("    MOV AX, " + value);
+            if (isFloatingPoint(source)) {
+                // 浮点数立即数：取整数部分
+                double value = Double.parseDouble(source);
+                int intValue = (int) value;  // 忽略小数部分
+                codeSection.add("    MOV AX, " + intValue);
+            } else {
+                // 使用convertImmediate方法处理布尔值
+                codeSection.add("    MOV AX, " + convertImmediate(source));
+            }
         } else {
-            // 变量赋值
             codeSection.add("    MOV AX, " + safeSource);
         }
         codeSection.add("    MOV " + safeDest + ", AX");
@@ -479,7 +491,7 @@ public class CodeGenerator {
     }
 
     /**
-     * 处理算术运算
+     * 处理算术运算 - 修改版本：整数运算时忽略小数部分
      */
     private void handleArithmetic(String operation, String operand1, String operand2, String result) {
         String safeOp1 = getSafeVariableName(operand1);
@@ -490,7 +502,14 @@ public class CodeGenerator {
 
         // 加载第一个操作数到AX
         if (isImmediate(operand1)) {
-            codeSection.add("    MOV AX, " + convertImmediate(operand1));
+            if (isFloatingPoint(operand1)) {
+                // 浮点数立即数：取整数部分
+                double value = Double.parseDouble(operand1);
+                int intValue = (int) value;
+                codeSection.add("    MOV AX, " + intValue);
+            } else {
+                codeSection.add("    MOV AX, " + operand1);
+            }
         } else {
             codeSection.add("    MOV AX, " + safeOp1);
         }
@@ -499,34 +518,61 @@ public class CodeGenerator {
         switch (operation) {
             case "+":
                 if (isImmediate(operand2)) {
-                    codeSection.add("    ADD AX, " + convertImmediate(operand2));
+                    if (isFloatingPoint(operand2)) {
+                        double value = Double.parseDouble(operand2);
+                        int intValue = (int) value;
+                        codeSection.add("    ADD AX, " + intValue);
+                    } else {
+                        codeSection.add("    ADD AX, " + operand2);
+                    }
                 } else {
                     codeSection.add("    ADD AX, " + safeOp2);
                 }
                 break;
+
             case "-":
                 if (isImmediate(operand2)) {
-                    codeSection.add("    SUB AX, " + convertImmediate(operand2));
+                    if (isFloatingPoint(operand2)) {
+                        double value = Double.parseDouble(operand2);
+                        int intValue = (int) value;
+                        codeSection.add("    SUB AX, " + intValue);
+                    } else {
+                        codeSection.add("    SUB AX, " + operand2);
+                    }
                 } else {
                     codeSection.add("    SUB AX, " + safeOp2);
                 }
                 break;
+
             case "*":
                 if (isImmediate(operand2)) {
-                    codeSection.add("    MOV BX, " + convertImmediate(operand2));
+                    if (isFloatingPoint(operand2)) {
+                        double value = Double.parseDouble(operand2);
+                        int intValue = (int) value;
+                        codeSection.add("    MOV BX, " + intValue);
+                    } else {
+                        codeSection.add("    MOV BX, " + operand2);
+                    }
                 } else {
                     codeSection.add("    MOV BX, " + safeOp2);
                 }
                 codeSection.add("    MUL BX");
                 break;
+
             case "/":
                 if (isImmediate(operand2)) {
-                    codeSection.add("    MOV BX, " + convertImmediate(operand2));
+                    if (isFloatingPoint(operand2)) {
+                        double value = Double.parseDouble(operand2);
+                        int intValue = (int) value;
+                        codeSection.add("    MOV BX, " + intValue);
+                    } else {
+                        codeSection.add("    MOV BX, " + operand2);
+                    }
                 } else {
                     codeSection.add("    MOV BX, " + safeOp2);
                 }
                 codeSection.add("    XOR DX, DX    ; 清除高位");
-                codeSection.add("    DIV BX");
+                codeSection.add("    DIV BX        ; 整数除法，自动忽略小数部分");
                 break;
         }
 
@@ -550,13 +596,25 @@ public class CodeGenerator {
 
         // 加载操作数并比较
         if (isImmediate(operand1)) {
-            codeSection.add("    MOV AX, " + convertImmediate(operand1));
+            if (isFloatingPoint(operand1)) {
+                double value = Double.parseDouble(operand1);
+                int intValue = (int) value;
+                codeSection.add("    MOV AX, " + intValue);
+            } else {
+                codeSection.add("    MOV AX, " + convertImmediate(operand1));
+            }
         } else {
             codeSection.add("    MOV AX, " + safeOp1);
         }
 
         if (isImmediate(operand2)) {
-            codeSection.add("    CMP AX, " + convertImmediate(operand2));
+            if (isFloatingPoint(operand2)) {
+                double value = Double.parseDouble(operand2);
+                int intValue = (int) value;
+                codeSection.add("    CMP AX, " + intValue);
+            } else {
+                codeSection.add("    CMP AX, " + convertImmediate(operand2));
+            }
         } else {
             codeSection.add("    CMP AX, " + safeOp2);
         }
@@ -584,8 +642,9 @@ public class CodeGenerator {
         codeSection.add("    JMP " + label);
     }
 
+
     /**
-     * 处理条件跳转
+     * 处理条件跳转 - 修复版本：正确处理布尔值
      */
     private void handleConditionalJump(String jumpType, String condition, String label) {
         String safeCond = getSafeVariableName(condition);
@@ -594,7 +653,9 @@ public class CodeGenerator {
 
         // 检查条件值
         if (isImmediate(condition)) {
-            codeSection.add("    MOV AX, " + convertImmediate(condition));
+            // 使用convertImmediate方法正确转换布尔值
+            String convertedValue = convertImmediate(condition);
+            codeSection.add("    MOV AX, " + convertedValue);
             codeSection.add("    CMP AX, 0");
         } else {
             codeSection.add("    CMP " + safeCond + ", 0");
@@ -608,7 +669,6 @@ public class CodeGenerator {
         }
         codeSection.add("");
     }
-
     /**
      * 处理标签
      */
@@ -624,6 +684,11 @@ public class CodeGenerator {
             return "1";
         } else if ("false".equals(immediate)) {
             return "0";
+        } else if (isFloatingPoint(immediate)) {
+            // 浮点数转换为整数（忽略小数部分）
+            double value = Double.parseDouble(immediate);
+            int intValue = (int) value;
+            return String.valueOf(intValue);
         }
         return immediate;
     }
@@ -633,13 +698,20 @@ public class CodeGenerator {
      */
     private String getJumpInstruction(String compareOp) {
         switch (compareOp) {
-            case "<":  return "JL";
-            case ">":  return "JG";
-            case "<=": return "JLE";
-            case ">=": return "JGE";
-            case "==": return "JE";
-            case "!=": return "JNE";
-            default:   return "JMP";
+            case "<":
+                return "JL";
+            case ">":
+                return "JG";
+            case "<=":
+                return "JLE";
+            case ">=":
+                return "JGE";
+            case "==":
+                return "JE";
+            case "!=":
+                return "JNE";
+            default:
+                return "JMP";
         }
     }
 
@@ -673,67 +745,6 @@ public class CodeGenerator {
             Quadruple q = quadruples.get(i);
             System.out.printf("%3d: (%s, %s, %s, %s)\n",
                     i, q.getOp(), q.getArg1(), q.getArg2(), q.getResult());
-        }
-    }
-
-    /**
-     * 修正的测试主函数
-     */
-    public static void main(String[] args) {
-        String[] testPrograms = {
-                "// 源代码\n" +
-                        "int main() {\n" +
-                        "    int a = 3 + 5;\n" +
-                        "    int b = 10 * 2;\n" +
-                        "    int c = 20 / 4;\n" +
-                        "}"
-        };
-
-        Map<String, Integer> tokenMap = TokenLibrary.readToken(
-                "C:\\Users\\WYR\\Desktop\\编译原理\\compliefx2\\src\\main\\resources\\com\\example\\compliefx2\\tokenTable.json");
-
-        for (String program : testPrograms) {
-            try {
-                System.out.println("\n" + "=".repeat(60));
-                System.out.println("测试程序: " + program);
-                System.out.println("=".repeat(60));
-
-                StatementParser parser = new StatementParser(new java.io.StringReader(program), tokenMap);
-                boolean isValid = parser.parseProgram();
-
-                System.out.println("解析结果: " + (isValid ? "成功" : "失败"));
-
-                if (!parser.getErrorMsg().isEmpty()) {
-                    System.out.println("\n错误信息:");
-                    System.out.println(parser.getErrorMsg());
-                }
-
-                // 输出AST
-                ASTNode ast = parser.getAST();
-                if (ast != null) {
-                    System.out.println("\nAST结构:");
-                    System.out.println(ast.toString());
-                }
-
-                // 输出中间代码
-                if (isValid) {
-                    IntermediateCodeGenerator codeGen = parser.getCodeGenerator();
-                    System.out.println("\n中间代码:");
-                    codeGen.printQuadruples();
-                    System.out.println("\n优化后的中间代码");
-                    codeGen.optimize();
-                    codeGen.printQuadruples();
-                    // 生成目标代码
-                    CodeGenerator gen = new CodeGenerator();
-                    gen.setQuadruples(codeGen.getQuadruples());  // 正确设置四元式
-                    String asm = gen.generateAssembly();
-                    System.out.println("\n生成的汇编代码:");
-                    System.out.println(asm);
-                }
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
         }
     }
 }

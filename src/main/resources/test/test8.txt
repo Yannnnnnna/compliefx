@@ -1,0 +1,14 @@
+void main() {
+            
+           int  x = 8;
+            int y = 3;
+            if (x > 5) {
+                if (y < 5) {
+                    x = x + y;
+                } else {
+                    x = x - y;
+                }
+            } else {
+                y = y * 2;
+            }
+        }

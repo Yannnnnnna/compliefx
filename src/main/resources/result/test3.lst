@@ -1,0 +1,250 @@
+Microsoft (R) Macro Assembler Version 6.11		    05/30/25 16:41:13
+tempfile.asm						     Page 1 - 1
+
+
+				
+				.MODEL SMALL
+ 0000				.DATA
+ 0000 0000			    i DW 0    ; int variable (i)
+ 0002 0000			    t0 DW 0    ; temporary variable (t0)
+ 0004 0000			    t1 DW 0    ; temporary variable (t1)
+				
+				    ; 输出相关的字符串和缓冲区
+ 0006 50 72 6F 67 72 61		    msg_header DB 'Program execution results:', 0Dh, 0Ah, '$'
+       6D 20 65 78 65 63
+       75 74 69 6F 6E 20
+       72 65 73 75 6C 74
+       73 3A 0D 0A 24
+ 0023 3D 3D 3D 3D 3D 3D		    msg_separator DB '=', '=', '=', '=', '=', '=', '=', '=', '=', '=', 0Dh, 0Ah, '$'
+       3D 3D 3D 3D 0D 0A
+       24
+ 0030 50 72 6F 67 72 61		    msg_success DB 'Program executed successfully!', 0Dh, 0Ah, '$'
+       6D 20 65 78 65 63
+       75 74 65 64 20 73
+       75 63 63 65 73 73
+       66 75 6C 6C 79 21
+       0D 0A 24
+ 0051 20 20 24			    msg_var_prefix DB '  ', '$'
+ 0054 20 3D 20 24		    msg_equals DB ' = ', '$'
+ 0058 0D 0A 24			    msg_newline DB 0Dh, 0Ah, '$'
+ 005B 50 72 65 73 73 20		    msg_press_key DB 'Press any key to exit...', '$'
+       61 6E 79 20 6B 65
+       79 20 74 6F 20 65
+       78 69 74 2E 2E 2E
+       24
+ 0074  0008 [			    number_buffer DB 8 DUP(0), '$'    ; 数字转字符串缓冲区
+        00
+       ] 24
+				.STACK 100h
+				
+ 0000				.CODE
+ 0000				START:
+ 0000  B8 ---- R		    MOV AX, @DATA
+ 0003  8E D8			    MOV DS, AX
+				
+ 0005				MAIN_PROC:
+				    ; i = 0
+ 0005  B8 0000			    MOV AX, 0
+ 0008  A3 0000 R		    MOV i, AX
+				
+ 000B				L0:
+				    ; t0 = i < 5
+ 000B  A1 0000 R		    MOV AX, i
+ 000E  83 F8 05			    CMP AX, 5
+ 0011  7C 08			    JL TRUE_0
+ 0013  C7 06 0002 R 0000	    MOV t0, 0
+ 0019  EB 06			    JMP END_1
+ 001B				TRUE_0:
+ 001B  C7 06 0002 R 0001	    MOV t0, 1
+ 0021				END_1:
+				
+				    ; 条件跳转: JZ t0 -> L1
+ 0021  83 3E 0002 R 00		    CMP t0, 0
+ 0026  74 11			    JE L1    ; 为0时跳转
+				
+				    ; t1 = i + 1
+ 0028  A1 0000 R		    MOV AX, i
+ 002B  83 C0 01			    ADD AX, 1
+ 002E  A3 0004 R		    MOV t1, AX
+				
+				    ; i = t1
+ 0031  A1 0004 R		    MOV AX, t1
+ 0034  A3 0000 R		    MOV i, AX
+				
+ 0037  EB D2			    JMP L0
+ 0039				L1:
+				    ; ===== 输出程序执行结果 =====
+ 0039  8D 16 0006 R		    LEA DX, msg_header
+ 003D  B4 09			    MOV AH, 09h
+ 003F  CD 21			    INT 21h
+				
+ 0041  8D 16 0023 R		    LEA DX, msg_separator
+ 0045  B4 09			    MOV AH, 09h
+ 0047  CD 21			    INT 21h
+				
+ 0049  8D 16 0030 R		    LEA DX, msg_success
+ 004D  B4 09			    MOV AH, 09h
+ 004F  CD 21			    INT 21h
+				
+				    ; 输出变量 i
+ 0051  8D 16 0051 R		    LEA DX, msg_var_prefix
+ 0055  B4 09			    MOV AH, 09h
+ 0057  CD 21			    INT 21h
+				
+				    ; 输出变量名 'i'
+ 0059  B2 69			    MOV DL, 'i'
+ 005B  B4 02			    MOV AH, 02h
+ 005D  CD 21			    INT 21h
+ 005F  8D 16 0054 R		    LEA DX, msg_equals
+ 0063  B4 09			    MOV AH, 09h
+ 0065  CD 21			    INT 21h
+				
+ 0067  A1 0000 R		    MOV AX, i
+ 006A  E8 0020			    CALL PrintNumber
+				
+ 006D  8D 16 0058 R		    LEA DX, msg_newline
+ 0071  B4 09			    MOV AH, 09h
+ 0073  CD 21			    INT 21h
+				
+ 0075  8D 16 0023 R		    LEA DX, msg_separator
+ 0079  B4 09			    MOV AH, 09h
+ 007B  CD 21			    INT 21h
+				
+ 007D  8D 16 005B R		    LEA DX, msg_press_key
+ 0081  B4 09			    MOV AH, 09h
+ 0083  CD 21			    INT 21h
+				
+				    ; 等待按键
+ 0085  B4 01			    MOV AH, 01h
+ 0087  CD 21			    INT 21h
+				
+				
+ 0089  B4 4C			    MOV AH, 4Ch    ; DOS程序结束
+ 008B  CD 21			    INT 21h
+				
+				; ===== 辅助函数 =====
+				
+ 008D				PrintNumber PROC
+				    ; 输入: AX = 要输出的数字
+				    ; 保存寄存器
+ 008D  53			    PUSH BX
+ 008E  51			    PUSH CX
+ 008F  52			    PUSH DX
+ 0090  56			    PUSH SI
+				
+				    ; 处理负数
+ 0091  B9 0000			    MOV CX, 0         ; 数字位数计数器
+ 0094  BB 000A			    MOV BX, 10        ; 除数
+ 0097  83 F8 00			    CMP AX, 0
+ 009A  7D 0A			    JGE PositiveNumber
+				
+				    ; 输出负号
+ 009C  50			    PUSH AX
+ 009D  B2 2D			    MOV DL, '-'
+ 009F  B4 02			    MOV AH, 02h
+ 00A1  CD 21			    INT 21h
+ 00A3  58			    POP AX
+ 00A4  F7 D8			    NEG AX            ; 转为正数
+				
+ 00A6				PositiveNumber:
+				    ; 特殊处理0
+ 00A6  83 F8 00			    CMP AX, 0
+ 00A9  75 08			    JNE ConvertLoop
+ 00AB  B2 30			    MOV DL, '0'
+ 00AD  B4 02			    MOV AH, 02h
+ 00AF  CD 21			    INT 21h
+ 00B1  EB 1D			    JMP PrintNumberEnd
+				
+ 00B3				ConvertLoop:
+				    ; 将数字转换为字符并压栈
+ 00B3  83 F8 00			    CMP AX, 0
+ 00B6  74 0B			    JE PrintLoop
+ 00B8  33 D2			    XOR DX, DX        ; 清除高位
+ 00BA  F7 F3			    DIV BX            ; AX = AX/10, DX = AX%10
+ 00BC  80 C2 30			    ADD DL, '0'       ; 转换为ASCII
+ 00BF  52			    PUSH DX           ; 压栈保存
+ 00C0  41			    INC CX            ; 位数+1
+ 00C1  EB F0			    JMP ConvertLoop
+				
+ 00C3				PrintLoop:
+				    ; 从栈中弹出并输出字符
+ 00C3  83 F9 00			    CMP CX, 0
+ 00C6  74 08			    JE PrintNumberEnd
+ 00C8  5A			    POP DX
+ 00C9  B4 02			    MOV AH, 02h
+ 00CB  CD 21			    INT 21h
+ 00CD  49			    DEC CX
+ 00CE  EB F3			    JMP PrintLoop
+				
+ 00D0				PrintNumberEnd:
+				    ; 恢复寄存器
+ 00D0  5E			    POP SI
+ 00D1  5A			    POP DX
+ 00D2  59			    POP CX
+ 00D3  5B			    POP BX
+ 00D4  C3			    RET
+ 00D5				PrintNumber ENDP
+				
+				
+				END START
+
+Microsoft (R) Macro Assembler Version 6.11		    05/30/25 16:41:13
+tempfile.asm						     Symbols 2 - 1
+
+
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+DGROUP . . . . . . . . . . . . .	GROUP
+_DATA  . . . . . . . . . . . . .	16 Bit	 007D	  Word	  Public  'DATA'	
+STACK  . . . . . . . . . . . . .	16 Bit	 0100	  Para	  Stack	  'STACK'	 
+_TEXT  . . . . . . . . . . . . .	16 Bit	 00D5	  Word	  Public  'CODE'	
+
+
+Procedures,  parameters and locals:
+
+                N a m e                 Type     Value    Attr
+
+PrintNumber  . . . . . . . . . .	P Near	 008D	  _TEXT	Length= 0048 Public
+  PositiveNumber . . . . . . . .	L Near	 00A6	  _TEXT	
+  ConvertLoop  . . . . . . . . .	L Near	 00B3	  _TEXT	
+  PrintLoop  . . . . . . . . . .	L Near	 00C3	  _TEXT	
+  PrintNumberEnd . . . . . . . .	L Near	 00D0	  _TEXT	
+
+
+Symbols:
+
+                N a m e                 Type     Value    Attr
+
+@CodeSize  . . . . . . . . . . .	Number	 0000h	 
+@DataSize  . . . . . . . . . . .	Number	 0000h	 
+@Interface . . . . . . . . . . .	Number	 0000h	 
+@Model . . . . . . . . . . . . .	Number	 0002h	 
+@code  . . . . . . . . . . . . .	Text   	 _TEXT
+@data  . . . . . . . . . . . . .	Text   	 DGROUP
+@fardata?  . . . . . . . . . . .	Text   	 FAR_BSS
+@fardata . . . . . . . . . . . .	Text   	 FAR_DATA
+@stack . . . . . . . . . . . . .	Text   	 DGROUP
+END_1  . . . . . . . . . . . . .	L Near	 0021	  _TEXT	
+L0 . . . . . . . . . . . . . . .	L Near	 000B	  _TEXT	
+L1 . . . . . . . . . . . . . . .	L Near	 0039	  _TEXT	
+MAIN_PROC  . . . . . . . . . . .	L Near	 0005	  _TEXT	
+START  . . . . . . . . . . . . .	L Near	 0000	  _TEXT	
+TRUE_0 . . . . . . . . . . . . .	L Near	 001B	  _TEXT	
+i  . . . . . . . . . . . . . . .	Word	 0000	  _DATA	
+msg_equals . . . . . . . . . . .	Byte	 0054	  _DATA	
+msg_header . . . . . . . . . . .	Byte	 0006	  _DATA	
+msg_newline  . . . . . . . . . .	Byte	 0058	  _DATA	
+msg_press_key  . . . . . . . . .	Byte	 005B	  _DATA	
+msg_separator  . . . . . . . . .	Byte	 0023	  _DATA	
+msg_success  . . . . . . . . . .	Byte	 0030	  _DATA	
+msg_var_prefix . . . . . . . . .	Byte	 0051	  _DATA	
+number_buffer  . . . . . . . . .	Byte	 0074	  _DATA	
+t0 . . . . . . . . . . . . . . .	Word	 0002	  _DATA	
+t1 . . . . . . . . . . . . . . .	Word	 0004	  _DATA	
+
+	   0 Warnings
+	   0 Errors

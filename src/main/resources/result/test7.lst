@@ -1,0 +1,374 @@
+Microsoft (R) Macro Assembler Version 6.11		    05/30/25 20:23:37
+tempfile.asm						     Page 1 - 1
+
+
+				.MODEL SMALL
+ 0000				.DATA
+ 0000 0000			    result DW 0    ; int variable (result)
+ 0002 0000			    a DW 0    ; int variable (a)
+ 0004 0000			    b DW 0    ; int variable (b)
+ 0006 0000			    c1 DW 0    ; int variable (c1)
+ 0008 0000			    t4 DW 0    ; temporary variable (t4)
+ 000A 0000			    t5 DW 0    ; temporary variable (t5)
+ 000C 0000			    t6 DW 0    ; temporary variable (t6)
+ 000E 0000			    t7 DW 0    ; temporary variable (t7)
+ 0010 0000			    t0 DW 0    ; temporary variable (t0)
+ 0012 0000			    t1 DW 0    ; temporary variable (t1)
+ 0014 0000			    t2 DW 0    ; temporary variable (t2)
+ 0016 0000			    t3 DW 0    ; temporary variable (t3)
+				
+				    ; 输出相关的字符串和缓冲区
+ 0018 50 72 6F 67 72 61		    msg_header DB 'Program execution results:', 0Dh, 0Ah, '$'
+       6D 20 65 78 65 63
+       75 74 69 6F 6E 20
+       72 65 73 75 6C 74
+       73 3A 0D 0A 24
+ 0035 3D 3D 3D 3D 3D 3D		    msg_separator DB '=', '=', '=', '=', '=', '=', '=', '=', '=', '=', 0Dh, 0Ah, '$'
+       3D 3D 3D 3D 0D 0A
+       24
+ 0042 50 72 6F 67 72 61		    msg_success DB 'Program executed successfully!', 0Dh, 0Ah, '$'
+       6D 20 65 78 65 63
+       75 74 65 64 20 73
+       75 63 63 65 73 73
+       66 75 6C 6C 79 21
+       0D 0A 24
+ 0063 20 20 24			    msg_var_prefix DB '  ', '$'
+ 0066 20 3D 20 24		    msg_equals DB ' = ', '$'
+ 006A 0D 0A 24			    msg_newline DB 0Dh, 0Ah, '$'
+ 006D 50 72 65 73 73 20		    msg_press_key DB 'Press any key to exit...', '$'
+       61 6E 79 20 6B 65
+       79 20 74 6F 20 65
+       78 69 74 2E 2E 2E
+       24
+				.STACK 100h
+				
+ 0000				.CODE
+ 0000				START:
+ 0000  B8 ---- R		    MOV AX, @DATA
+ 0003  8E D8			    MOV DS, AX
+				
+ 0005				MAIN_PROC:
+				    ; a = 3
+ 0005  B8 0003			    MOV AX, 3
+ 0008  A3 0002 R		    MOV a, AX
+				
+				    ; b = 4
+ 000B  B8 0004			    MOV AX, 4
+ 000E  A3 0004 R		    MOV b, AX
+				
+				    ; c1 = 2
+ 0011  B8 0002			    MOV AX, 2
+ 0014  A3 0006 R		    MOV c1, AX
+				
+				    ; t0 = 12
+ 0017  B8 000C			    MOV AX, 12
+ 001A  A3 0010 R		    MOV t0, AX
+				
+				    ; t1 = -1
+ 001D  B8 FFFF			    MOV AX, -1
+ 0020  A3 0012 R		    MOV t1, AX
+				
+				    ; t2 = -2
+ 0023  B8 FFFE			    MOV AX, -2
+ 0026  A3 0014 R		    MOV t2, AX
+				
+				    ; t3 = 10
+ 0029  B8 000A			    MOV AX, 10
+ 002C  A3 0016 R		    MOV t3, AX
+				
+				    ; t4 = 1.5
+ 002F  B8 0001			    MOV AX, 1
+ 0032  A3 0008 R		    MOV t4, AX
+				
+				    ; t5 = 11.5
+ 0035  B8 000B			    MOV AX, 11
+ 0038  A3 000A R		    MOV t5, AX
+				
+				    ; result = 11.5
+ 003B  B8 000B			    MOV AX, 11
+ 003E  A3 0000 R		    MOV result, AX
+				
+				    ; t6 = result > 10
+ 0041  A1 0000 R		    MOV AX, result
+ 0044  83 F8 0A			    CMP AX, 10
+ 0047  7F 08			    JG TRUE_0
+ 0049  C7 06 000C R 0000	    MOV t6, 0
+ 004F  EB 06			    JMP END_1
+ 0051				TRUE_0:
+ 0051  C7 06 000C R 0001	    MOV t6, 1
+ 0057				END_1:
+				
+				    ; 条件跳转: JZ t6 -> L0
+ 0057  83 3E 000C R 00		    CMP t6, 0
+ 005C  74 0F			    JE L0    ; 为0时跳转
+				
+				    ; t7 = result - 5
+ 005E  A1 0000 R		    MOV AX, result
+ 0061  83 E8 05			    SUB AX, 5
+ 0064  A3 000E R		    MOV t7, AX
+				
+				    ; result = t7
+ 0067  A1 000E R		    MOV AX, t7
+ 006A  A3 0000 R		    MOV result, AX
+				
+ 006D				L0:
+				    ; ===== 输出程序执行结果 =====
+ 006D  8D 16 0018 R		    LEA DX, msg_header
+ 0071  B4 09			    MOV AH, 09h
+ 0073  CD 21			    INT 21h
+				
+ 0075  8D 16 0035 R		    LEA DX, msg_separator
+ 0079  B4 09			    MOV AH, 09h
+ 007B  CD 21			    INT 21h
+				
+ 007D  8D 16 0042 R		    LEA DX, msg_success
+ 0081  B4 09			    MOV AH, 09h
+ 0083  CD 21			    INT 21h
+				
+				    ; 输出变量 result
+ 0085  8D 16 0063 R		    LEA DX, msg_var_prefix
+ 0089  B4 09			    MOV AH, 09h
+ 008B  CD 21			    INT 21h
+				
+				    ; 输出变量名 'result'
+ 008D  B2 72			    MOV DL, 'r'
+ 008F  B4 02			    MOV AH, 02h
+ 0091  CD 21			    INT 21h
+ 0093  B2 65			    MOV DL, 'e'
+ 0095  B4 02			    MOV AH, 02h
+ 0097  CD 21			    INT 21h
+ 0099  B2 73			    MOV DL, 's'
+ 009B  B4 02			    MOV AH, 02h
+ 009D  CD 21			    INT 21h
+ 009F  B2 75			    MOV DL, 'u'
+ 00A1  B4 02			    MOV AH, 02h
+ 00A3  CD 21			    INT 21h
+ 00A5  B2 6C			    MOV DL, 'l'
+ 00A7  B4 02			    MOV AH, 02h
+ 00A9  CD 21			    INT 21h
+ 00AB  B2 74			    MOV DL, 't'
+ 00AD  B4 02			    MOV AH, 02h
+ 00AF  CD 21			    INT 21h
+ 00B1  8D 16 0066 R		    LEA DX, msg_equals
+ 00B5  B4 09			    MOV AH, 09h
+ 00B7  CD 21			    INT 21h
+				
+ 00B9  A1 0000 R		    MOV AX, result
+ 00BC  E8 0092			    CALL PrintNumber
+				
+ 00BF  8D 16 006A R		    LEA DX, msg_newline
+ 00C3  B4 09			    MOV AH, 09h
+ 00C5  CD 21			    INT 21h
+				
+				    ; 输出变量 a
+ 00C7  8D 16 0063 R		    LEA DX, msg_var_prefix
+ 00CB  B4 09			    MOV AH, 09h
+ 00CD  CD 21			    INT 21h
+				
+				    ; 输出变量名 'a'
+ 00CF  B2 61			    MOV DL, 'a'
+ 00D1  B4 02			    MOV AH, 02h
+ 00D3  CD 21			    INT 21h
+ 00D5  8D 16 0066 R		    LEA DX, msg_equals
+ 00D9  B4 09			    MOV AH, 09h
+ 00DB  CD 21			    INT 21h
+				
+ 00DD  A1 0002 R		    MOV AX, a
+ 00E0  E8 006E			    CALL PrintNumber
+				
+ 00E3  8D 16 006A R		    LEA DX, msg_newline
+ 00E7  B4 09			    MOV AH, 09h
+ 00E9  CD 21			    INT 21h
+				
+				    ; 输出变量 b
+ 00EB  8D 16 0063 R		    LEA DX, msg_var_prefix
+ 00EF  B4 09			    MOV AH, 09h
+ 00F1  CD 21			    INT 21h
+				
+				    ; 输出变量名 'b'
+ 00F3  B2 62			    MOV DL, 'b'
+ 00F5  B4 02			    MOV AH, 02h
+ 00F7  CD 21			    INT 21h
+ 00F9  8D 16 0066 R		    LEA DX, msg_equals
+ 00FD  B4 09			    MOV AH, 09h
+ 00FF  CD 21			    INT 21h
+				
+ 0101  A1 0004 R		    MOV AX, b
+ 0104  E8 004A			    CALL PrintNumber
+				
+ 0107  8D 16 006A R		    LEA DX, msg_newline
+ 010B  B4 09			    MOV AH, 09h
+ 010D  CD 21			    INT 21h
+				
+				    ; 输出变量 c1
+ 010F  8D 16 0063 R		    LEA DX, msg_var_prefix
+ 0113  B4 09			    MOV AH, 09h
+ 0115  CD 21			    INT 21h
+				
+				    ; 输出变量名 'c1'
+ 0117  B2 63			    MOV DL, 'c'
+ 0119  B4 02			    MOV AH, 02h
+ 011B  CD 21			    INT 21h
+ 011D  B2 31			    MOV DL, '1'
+ 011F  B4 02			    MOV AH, 02h
+ 0121  CD 21			    INT 21h
+ 0123  8D 16 0066 R		    LEA DX, msg_equals
+ 0127  B4 09			    MOV AH, 09h
+ 0129  CD 21			    INT 21h
+				
+ 012B  A1 0006 R		    MOV AX, c1
+ 012E  E8 0020			    CALL PrintNumber
+				
+ 0131  8D 16 006A R		    LEA DX, msg_newline
+ 0135  B4 09			    MOV AH, 09h
+ 0137  CD 21			    INT 21h
+				
+ 0139  8D 16 0035 R		    LEA DX, msg_separator
+ 013D  B4 09			    MOV AH, 09h
+ 013F  CD 21			    INT 21h
+				
+ 0141  8D 16 006D R		    LEA DX, msg_press_key
+ 0145  B4 09			    MOV AH, 09h
+ 0147  CD 21			    INT 21h
+				
+				    ; 等待按键
+ 0149  B4 01			    MOV AH, 01h
+ 014B  CD 21			    INT 21h
+				
+				
+ 014D  B4 4C			    MOV AH, 4Ch    ; DOS程序结束
+ 014F  CD 21			    INT 21h
+				
+				; ===== 辅助函数 =====
+				
+ 0151				PrintNumber PROC
+				    ; 输入: AX = 要输出的数字
+				    ; 保存寄存器
+ 0151  53			    PUSH BX
+ 0152  51			    PUSH CX
+ 0153  52			    PUSH DX
+ 0154  56			    PUSH SI
+				
+				    ; 处理负数
+ 0155  B9 0000			    MOV CX, 0         ; 数字位数计数器
+ 0158  BB 000A			    MOV BX, 10        ; 除数
+ 015B  83 F8 00			    CMP AX, 0
+ 015E  7D 0A			    JGE PositiveNumber
+				
+				    ; 输出负号
+ 0160  50			    PUSH AX
+ 0161  B2 2D			    MOV DL, '-'
+ 0163  B4 02			    MOV AH, 02h
+ 0165  CD 21			    INT 21h
+ 0167  58			    POP AX
+ 0168  F7 D8			    NEG AX            ; 转为正数
+				
+ 016A				PositiveNumber:
+				    ; 特殊处理0
+ 016A  83 F8 00			    CMP AX, 0
+ 016D  75 08			    JNE ConvertLoop
+ 016F  B2 30			    MOV DL, '0'
+ 0171  B4 02			    MOV AH, 02h
+ 0173  CD 21			    INT 21h
+ 0175  EB 1D			    JMP PrintNumberEnd
+				
+ 0177				ConvertLoop:
+				    ; 将数字转换为字符并压栈
+ 0177  83 F8 00			    CMP AX, 0
+ 017A  74 0B			    JE PrintLoop
+ 017C  33 D2			    XOR DX, DX        ; 清除高位
+ 017E  F7 F3			    DIV BX            ; AX = AX/10, DX = AX%10
+ 0180  80 C2 30			    ADD DL, '0'       ; 转换为ASCII
+ 0183  52			    PUSH DX           ; 压栈保存
+ 0184  41			    INC CX            ; 位数+1
+ 0185  EB F0			    JMP ConvertLoop
+				
+ 0187				PrintLoop:
+				    ; 从栈中弹出并输出字符
+ 0187  83 F9 00			    CMP CX, 0
+ 018A  74 08			    JE PrintNumberEnd
+ 018C  5A			    POP DX
+ 018D  B4 02			    MOV AH, 02h
+ 018F  CD 21			    INT 21h
+ 0191  49			    DEC CX
+ 0192  EB F3			    JMP PrintLoop
+				
+ 0194				PrintNumberEnd:
+				    ; 恢复寄存器
+ 0194  5E			    POP SI
+ 0195  5A			    POP DX
+ 0196  59			    POP CX
+ 0197  5B			    POP BX
+ 0198  C3			    RET
+ 0199				PrintNumber ENDP
+				
+				
+				END START
+
+Microsoft (R) Macro Assembler Version 6.11		    05/30/25 20:23:37
+tempfile.asm						     Symbols 2 - 1
+
+
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+DGROUP . . . . . . . . . . . . .	GROUP
+_DATA  . . . . . . . . . . . . .	16 Bit	 0086	  Word	  Public  'DATA'	
+STACK  . . . . . . . . . . . . .	16 Bit	 0100	  Para	  Stack	  'STACK'	 
+_TEXT  . . . . . . . . . . . . .	16 Bit	 0199	  Word	  Public  'CODE'	
+
+
+Procedures,  parameters and locals:
+
+                N a m e                 Type     Value    Attr
+
+PrintNumber  . . . . . . . . . .	P Near	 0151	  _TEXT	Length= 0048 Public
+  PositiveNumber . . . . . . . .	L Near	 016A	  _TEXT	
+  ConvertLoop  . . . . . . . . .	L Near	 0177	  _TEXT	
+  PrintLoop  . . . . . . . . . .	L Near	 0187	  _TEXT	
+  PrintNumberEnd . . . . . . . .	L Near	 0194	  _TEXT	
+
+
+Symbols:
+
+                N a m e                 Type     Value    Attr
+
+@CodeSize  . . . . . . . . . . .	Number	 0000h	 
+@DataSize  . . . . . . . . . . .	Number	 0000h	 
+@Interface . . . . . . . . . . .	Number	 0000h	 
+@Model . . . . . . . . . . . . .	Number	 0002h	 
+@code  . . . . . . . . . . . . .	Text   	 _TEXT
+@data  . . . . . . . . . . . . .	Text   	 DGROUP
+@fardata?  . . . . . . . . . . .	Text   	 FAR_BSS
+@fardata . . . . . . . . . . . .	Text   	 FAR_DATA
+@stack . . . . . . . . . . . . .	Text   	 DGROUP
+END_1  . . . . . . . . . . . . .	L Near	 0057	  _TEXT	
+L0 . . . . . . . . . . . . . . .	L Near	 006D	  _TEXT	
+MAIN_PROC  . . . . . . . . . . .	L Near	 0005	  _TEXT	
+START  . . . . . . . . . . . . .	L Near	 0000	  _TEXT	
+TRUE_0 . . . . . . . . . . . . .	L Near	 0051	  _TEXT	
+a  . . . . . . . . . . . . . . .	Word	 0002	  _DATA	
+b  . . . . . . . . . . . . . . .	Word	 0004	  _DATA	
+c1 . . . . . . . . . . . . . . .	Word	 0006	  _DATA	
+msg_equals . . . . . . . . . . .	Byte	 0066	  _DATA	
+msg_header . . . . . . . . . . .	Byte	 0018	  _DATA	
+msg_newline  . . . . . . . . . .	Byte	 006A	  _DATA	
+msg_press_key  . . . . . . . . .	Byte	 006D	  _DATA	
+msg_separator  . . . . . . . . .	Byte	 0035	  _DATA	
+msg_success  . . . . . . . . . .	Byte	 0042	  _DATA	
+msg_var_prefix . . . . . . . . .	Byte	 0063	  _DATA	
+result . . . . . . . . . . . . .	Word	 0000	  _DATA	
+t0 . . . . . . . . . . . . . . .	Word	 0010	  _DATA	
+t1 . . . . . . . . . . . . . . .	Word	 0012	  _DATA	
+t2 . . . . . . . . . . . . . . .	Word	 0014	  _DATA	
+t3 . . . . . . . . . . . . . . .	Word	 0016	  _DATA	
+t4 . . . . . . . . . . . . . . .	Word	 0008	  _DATA	
+t5 . . . . . . . . . . . . . . .	Word	 000A	  _DATA	
+t6 . . . . . . . . . . . . . . .	Word	 000C	  _DATA	
+t7 . . . . . . . . . . . . . . .	Word	 000E	  _DATA	
+
+	   0 Warnings
+	   0 Errors
