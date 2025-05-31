@@ -8,11 +8,11 @@ package com.example.compliefx2.semanticAnalyzer;
  */
 class SemanticError {
     public enum ErrorType {
-        DUPLICATE_DECLARATION,
-        UNDECLARED_VARIABLE,
-        TYPE_MISMATCH,
-        INVALID_ASSIGNMENT,
-        UNINITIALIZED_VARIABLE, FUNCTION_ERROR
+        DUPLICATE_DECLARATION, // 重复声明
+        UNDECLARED_VARIABLE, // 未声明变量
+        TYPE_MISMATCH, // 类型不匹配
+        INVALID_ASSIGNMENT, // 无效赋值
+        UNINITIALIZED_VARIABLE, FUNCTION_ERROR // 未初始化变量或函数错误
     }
 
     private ErrorType type;

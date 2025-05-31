@@ -88,19 +88,6 @@ public class UnifiedExpressionParser {
         initTokenTypes(tokenMap);
         advance();
     }
-    /**
-     * 获取中间代码生成器
-     */
-    public IntermediateCodeGenerator getCodeGenerator() {
-        return codeGenerator;
-    }
-
-    /**
-     * 设置中间代码生成器（用于StatementParser传递其生成器实例）
-     */
-    public void setCodeGenerator(IntermediateCodeGenerator codeGenerator) {
-        this.codeGenerator = codeGenerator;
-    }
 
     /**
      * 初始化Token类型常量
@@ -634,57 +621,5 @@ public class UnifiedExpressionParser {
         }
     }
 
-    /**
-     * 主函数用于测试
-     */
-    /**
-     * 主函数 - 修改版本，展示表达式的中间代码生成
-     */
-    public static void main(String[] args) {
-        String[] testExpressions = {
-                "3 + 4 * (5 - 2)",
-                "result = a + b * c / d",
-                "(status == \"active\") && (count > 0 || retries < 3)",
-                "true",
-                "!!flag",
-                "x > 0 && y < 10"
-        };
 
-        Map<String, Integer> tokenMap = TokenLibrary.readToken("C:\\Users\\WYR\\Desktop\\编译原理\\compliefx2\\src\\main\\resources\\com\\example\\compliefx2\\tokenTable.json");
-
-        for (String expression : testExpressions) {
-            try {
-                System.out.println("\n" + "=".repeat(50));
-                System.out.println("测试表达式: " + expression);
-                System.out.println("=".repeat(50));
-
-                UnifiedExpressionParser parser = new UnifiedExpressionParser(new StringReader(expression), tokenMap);
-                boolean isValid = parser.parse();
-
-                System.out.println("解析结果: " + (isValid ? "成功" : "失败"));
-
-                if (!parser.getErrorMsg().isEmpty()) {
-                    System.out.println("\n错误信息:");
-                    System.out.println(parser.getErrorMsg());
-                }
-
-                // 输出AST
-                ASTNode ast = parser.getAST();
-                if (ast != null) {
-                    System.out.println("\nAST结构:");
-                    System.out.println(ast.toString());
-
-                    // 生成并输出中间代码
-                    if (isValid) {
-                        System.out.println("\n表达式中间代码:");
-                        parser.getCodeGenerator().generateCode(ast);
-                        parser.getCodeGenerator().printQuadruples();
-                    }
-                }
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
 }

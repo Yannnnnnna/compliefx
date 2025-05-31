@@ -109,7 +109,7 @@ public class StatementParser extends UnifiedExpressionParser {
     }
 
     /**
-     * 解析程序 - 修改版本，添加中间代码生成
+     * 解析程序
      */
     public boolean parseProgram() throws IOException {
         try {
@@ -635,7 +635,6 @@ public class StatementParser extends UnifiedExpressionParser {
      * 声明语句 → 类型说明符 标识符 = 表达式 ;
      * @throws IOException 如果IO操作失败
      */
-
     private ASTNode parseDeclaration() throws IOException {
         indentLevel++;
         try {
@@ -711,9 +710,6 @@ public class StatementParser extends UnifiedExpressionParser {
                 return null;
             }
 
-//            // 解析循环条件表达式
-//            S();
-//            ASTNode conditionNode = super.getAST();
             // 解析循环条件表达式
             ASTNode conditionNode = S();
 
@@ -813,61 +809,4 @@ public class StatementParser extends UnifiedExpressionParser {
         }
     }
 
-    /**
-     * 主函数 - 修改版本，展示中间代码生成
-     */
-    public static void main(String[] args) {
-        String[] testPrograms = {
-//                "void main() { int x = 5; }",
-//                "void main() { int x = 5; int y = x + 10; }",
-//                "void main() { if (x > 0) { y = x + 1; } else { y = 0; } }",
-//                "void main() { while (i < 10) { i = i + 1; } }",
-                "void main() { for (int i = 0; i < 10; i = i + 1) { sum = sum + i; } }",
-//                "void main() { int a = 3; int b = 4; int c = a + b * 2; }"
-
-        };
-
-        Map<String, Integer> tokenMap = TokenLibrary.readToken("C:\\Users\\WYR\\Desktop\\编译原理\\compliefx2\\src\\main\\resources\\com\\example\\compliefx2\\tokenTable.json");
-
-        for (String program : testPrograms) {
-            try {
-                System.out.println("\n" + "=".repeat(60));
-                System.out.println("测试程序: " + program);
-                System.out.println("=".repeat(60));
-
-                StatementParser parser = new StatementParser(new java.io.StringReader(program), tokenMap);
-                boolean isValid = parser.parseProgram();
-
-                System.out.println("解析结果: " + (isValid ? "成功" : "失败"));
-
-                if (!parser.getErrorMsg().isEmpty()) {
-                    System.out.println("\n错误信息:");
-                    System.out.println(parser.getErrorMsg());
-                }
-
-                // 输出AST
-                ASTNode ast = parser.getAST();
-                if (ast != null) {
-                    System.out.println("\nAST结构:");
-                    System.out.println(ast.toString());
-                }
-
-                // 输出中间代码
-                if (isValid) {
-                    System.out.println("\n中间代码:");
-                    parser.getCodeGenerator().printQuadruples();
-                }
-
-                // 输出目标代码
-                if (isValid) {
-                    CodeGenerator gen = new CodeGenerator();
-                    String asm = gen.generateAssembly();
-                    System.out.println("\n生成的汇编代码:\n" + asm);
-                }
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
 }

@@ -1,10 +1,6 @@
 package com.example.compliefx2;
 
-import com.example.compliefx2.intermediateCode.IntermediateCodeGenerator;
 import com.example.compliefx2.intermediateCode.Quadruple;
-import com.example.compliefx2.syntaxAnalyzer.StatementParser;
-
-import java.io.IOException;
 import java.util.*;
 
 /**
